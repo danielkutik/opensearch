@@ -1,0 +1,129 @@
+<?php
+
+/**
+ * Implementation of hook_menu().
+ */
+function opensearch_menu($may_cache) {
+  $items = array();
+
+  if ($may_cache) {
+    foreach (module_list() as $name) {
+      if (module_hook($name, 'search') && $title = module_invoke($name, 'search', 'name')) {
+        $items[] = array(
+          'path' => 'opensearch/'. $name,
+          'title' => $title,
+          'callback' => 'opensearch_view',
+          'access' => user_access('search content'),
+          'type' => MENU_LOCAL_TASK);
+      }
+    }
+  }
+  else {
+    $type = (arg(0) == 'search' && arg(1) != '') ? arg(1) : 'node';
+    drupal_add_link(array(
+      'rel' => 'search',
+      'href' => url('opensearch/'. $type, NULL, NULL, TRUE),
+      'type' => 'application/opensearchdescription+xml'
+    ));
+  }
+
+  return $items;
+}
+
+
+/**
+ * Menu callback; presents an opensearch results page.
+ */
+function opensearch_view() {
+  $type = arg(1);
+  $keys = search_get_keys();
+
+  // OpenSearch pages are 1-indexed
+  $_GET['page']--;
+
+  // Only perform search if there is non-whitespace search term:
+  if (!module_hook($type, 'search')) {
+    return drupal_not_found();
+  }
+
+  if (trim($keys)) {
+    // Log the search keys:
+    watchdog('search', t('OpenSearch: %keys (%type).', array('%keys' => theme('placeholder', $keys), '%type' => module_invoke($type, 'search', 'name'))), WATCHDOG_NOTICE, l(t('results'), 'search/'. $type .'/'. $keys));
+
+    // Collect the search results:
+    $results = module_invoke($type, 'search', 'search', $keys);
+
+    return opensearch_feed($type, $keys, $results);
+  }
+  else {
+    return opensearch_description($type);
+  }
+}
+
+/**
+ * Return an open search results feed.
+ */
+function opensearch_feed($type, $keys, $results) {
+  global $base_url, $locale;
+
+  $namespaces = array(
+    'xmlns:dc="http://purl.org/dc/elements/1.1/"',
+    'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"'
+  );
+
+  foreach ($results as $result) {
+    $items .= format_rss_item($result['title'], $result['link'], $result['snippet']);
+  }
+
+  $args = array(
+    'opensearch:totalResults' => $GLOBALS['pager_total_items'][0],
+    'opensearch:startIndex' => $GLOBALS['pager_page_array'][0] * 10 + 1,
+    'opensearch:itemsPerPage' => 10,
+    array('key' => 'opensearch:link', 'attributes' => array('href' => url('opensearch/'. $type, NULL, NULL, TRUE), 'type' => 'application/opensearchdescription+xml')),
+    array('key' => 'opensearch:Query', 'attributes' => array('role' => 'request', 'searchTerms' => $keys)),
+  );
+
+  $output = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+  $output .= "<rss version=\"2.0\" xml:base=\"". url('', NULL, NULL, TRUE) ."\" ". implode(' ', $namespaces) .">\n";
+  $output .= format_rss_channel(
+    $keys .' - '. variable_get('site_name', 'drupal') .' '. module_invoke($type, 'search', 'name') .' '. t('search'),
+    $base_url,
+    variable_get('site_mission', ''),
+    $items,
+    $locale,
+    $args
+  );
+  $output .= "</rss>\n";
+
+  drupal_set_header('Content-Type: application/rss+xml; charset=utf-8');
+  print $output;
+}
+
+/**
+ * Return an open search description feed.
+ */
+function opensearch_description($type) {
+  global $base_url;
+
+  $url = parse_url($base_url);
+  $name = check_plain(variable_get('site_name', 'drupal') .' '. module_invoke($type, 'search', 'name') .' '. t('search'));
+  $description = variable_get('site_slogan', '');
+  $email = check_plain(ini_get('sendmail_from'));
+  $url = check_url($base_url);
+
+  $feed = <<<DOC
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>$name</ShortName>
+  <Description>$description</Description>
+  <Contact>$email</Contact>
+  <Url type="application/rss+xml"
+       template="$url/opensearch/$type/{searchTerms}?page={startPage}"/>
+</OpenSearchDescription>
+DOC;
+
+  drupal_set_header('Content-Type: application/opensearchdescription+xml; charset=utf-8');
+  print $feed;
+}
+
+?>
