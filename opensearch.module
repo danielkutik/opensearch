@@ -185,11 +185,12 @@ function opensearch_feed($type, $keys, $results) {
 
   $namespaces = array(
     'xmlns:dc="http://purl.org/dc/elements/1.1/"',
-    'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"'
+    'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"',
+    'xmlns:relevance="http://a9.com/-/opensearch/extensions/relevance/1.0/"'
   );
 
   foreach ($results as $result) {
-    $items .= format_rss_item($result['title'], $result['link'], $result['snippet']);
+    $items .= format_rss_item($result['title'], $result['link'], $result['snippet'], array('relevance:score' => (float)$result['score']));
   }
 
   $args = array(
