@@ -260,6 +260,8 @@ function opensearch_description($type) {
   <ShortName>$opensearch_shortname</ShortName>
   <Description>$opensearch_description</Description>
   <Contact>$opensearch_contact</Contact>
+  <Url type="text/html"
+       template="$url/search/$type/{searchTerms}?page={startPage}"/>
   <Url type="application/rss+xml"
        template="$url/opensearch/$type/{searchTerms}?page={startPage}"/>
 DOC;
