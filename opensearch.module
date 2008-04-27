@@ -98,11 +98,6 @@ function opensearch_admin_settings() {
     '#size' => 48,
     '#description' => t("The name by which this search content provider is referred to in hypertext links, etc.  The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
   );
-  $form['description']['opensearch_developer'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Display developer information in description file?'),
-    '#default_value' => $opensearch_developer,
-  );
   $form['description']['opensearch_attribution'] = array(
     '#type' => 'textfield',
     '#title' => t('Attribution'),
@@ -229,7 +224,6 @@ function opensearch_get_description_defaults() {
   $args['opensearch_contact'] =  check_plain(variable_get('opensearch_contact', variable_get('site_mail', ini_get('sendmail_from'))));
   $args['opensearch_tags'] = check_plain(variable_get('opensearch_tags', ''));
   $args['opensearch_longname'] = check_plain(variable_get('opensearch_longname', $args['opensearch_description']));
-  $args['opensearch_developer'] = check_plain(variable_get('opensearch_developer', 1));
   $args['opensearch_attribution'] = check_plain(variable_get('opensearch_attribution', ''));
   $args['opensearch_syndication_right'] = check_plain(variable_get('opensearch_syndication_right', 'open'));
   $args['opensearch_adult_content'] = check_plain(variable_get('opensearch_adult_content', 0));
@@ -269,9 +263,6 @@ DOC;
   }
   if ($opensearch_longname != '') {
     $output .= "\n  <LongName>$opensearch_longname</LongName>";
-  }
-  if ($opensearch_developer) {
-    $output .= "\n  <Developer>Steven Wittens http://drupal.org/user/10, Robert Douglass http://drupal.org/user/5449</Developer>";
   }
   if ($opensearch_attribution) {
     $output .= "\n  <Attribution>$opensearch_attribution</Attribution>";
