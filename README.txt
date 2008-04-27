@@ -1,4 +1,0 @@
-; $Id$
-name = OpenSearch Feed
-description = Allows Drupal search results to be returned in the OpenSearch RSS format
-dependencies = search
