@@ -250,8 +250,8 @@ function opensearch_description($type) {
   $opensearch_description = t($opensearch_description, array('@site' => $site_name, '@type' => $search_type));
   $opensearch_longname = t($opensearch_longname, array('@site' => $site_name, '@type' => $search_type));
   $url = check_url($base_url);
-  $url_search = url('search/' . $type, NULL, NULL, TRUE) . '/{searchTerms}?page={startPage}';
-  $url_opensearch = url('opensearch/' . $type, NULL, NULL, TRUE) . '/{searchTerms}?page={startPage}';
+  $url_search = str_replace(array('%7B', '%7D', '&'), array('{', '}', '&amp;'), url('search/' . $type . '/{searchTerms}', 'page={startPage}', NULL, TRUE));
+  $url_opensearch = str_replace(array('%7B', '%7D', '&'), array('{', '}', '&amp;'), url('opensearch/' . $type . '/{searchTerms}', 'page={startPage}', NULL, TRUE));
   $output = <<<DOC
 <?xml version="1.0" encoding="UTF-8"?>
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
