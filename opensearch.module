@@ -132,10 +132,7 @@ function opensearch_form_alter($form_id, &$form) {
   if ($form_id == 'search_form' && arg(2)) {
     // for pagination etc.
     $get = drupal_query_string_encode($_GET, array('q'));
-    if (trim($get)) {
-      $get = '?'. $get;
-    }
-    $form['basic']['inline']['rss'] = array('#type' => 'markup', '#value' => theme('xml_icon', url('opensearch/' . arg(1). '/'. urlencode(search_get_keys()). $get)));
+    $form['basic']['inline']['rss'] = array('#type' => 'markup', '#value' => theme('xml_icon', url('opensearch/' . arg(1). '/'. urlencode(search_get_keys()), trim($get)?$get:NULL)));
   }
 }
 
