@@ -110,17 +110,17 @@ function opensearch_admin_settings() {
     '#title' => t('Syndication right'),
     '#default_value' => $opensearch_syndication_right,
     '#options' => array(
-      'open' => t('open - search results can be published or re-published without restriction. This is the default.'),
-      'limited' => t('limited - search results can be published on the client site, but not further republished.'),
-      'private' => t('private - search feed may be queried, but the results may not be displayed at the client site.'),
-      'closed' => t('closed - search feed should not be queried, and will disable the column for searches.'),
+      'open' => t('open—search results can be published or re-published without restriction. This is the default.'),
+      'limited' => t('limited—search results can be published on the client site, but not further republished.'),
+      'private' => t('private—search feed may be queried, but the results may not be displayed at the client site.'),
+      'closed' => t('closed—search feed should not be queried, and will disable the column for searches.'),
     ),
     '#description' => t('The degree to which the search results provided by this search engine can be distributed.'),
   );
   $form['description']['opensearch_adult_content'] = array(
     '#type' => 'checkbox',
-    '#title' => t('AdultContent'),
-    '#description' => t('A boolean flag that must be set if the content provided is not suitable for minors.'),
+    '#title' => t('Adult content'),
+    '#description' => t('Should be checked if the search results may contain material intended only for adults.'),
     '#default_value' => $opensearch_adult_content,
   );
 
