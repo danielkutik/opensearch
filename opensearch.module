@@ -1,14 +1,6 @@
 <?php
 // $Id$
 
-function opensearch_help($section) {
- switch ($section) {
-    case 'admin/modules#description':
-      return t('Allows Drupal search results to be returned in the <a href="http://opensearch.a9.com/">OpenSearch</a> RSS format.');
-      break;
-  }
-}
-
 /**
  * Implementation of hook_menu().
  */
@@ -27,7 +19,7 @@ function opensearch_menu($may_cache) {
     foreach (module_list() as $name) {
       if (module_hook($name, 'search') && $title = module_invoke($name, 'search', 'name')) {
         $items[] = array(
-          'path' => 'opensearch/'. $name,
+          'path' => 'opensearch/' . $name,
           'title' => $title,
           'callback' => 'opensearch_view',
           'access' => user_access('search content'),
@@ -37,10 +29,13 @@ function opensearch_menu($may_cache) {
   }
   else {
     $type = (arg(0) == 'search' && arg(1) != '') ? arg(1) : 'node';
+    $search_type = check_plain(module_invoke($type, 'search', 'name'));
+    $opensearch_shortname = t(check_plain(variable_get('opensearch_shortname', '@type search')), array('@type' => $search_type));
     drupal_add_link(array(
       'rel' => 'search',
       'href' => url('opensearch/'. $type, NULL, NULL, TRUE),
-      'type' => 'application/opensearchdescription+xml'
+      'type' => 'application/opensearchdescription+xml',
+      'title' => $opensearch_shortname
     ));
   }
 
@@ -62,7 +57,7 @@ function opensearch_admin_settings() {
 
   $form['description']['opensearch_prefix'] = array(
     '#type' => 'markup',
-    '#value' => '<p>'. t('Your site offers the following OpenSearch description files: %links', array('%links' => theme('item_list', $links))). '</p>',
+    '#value' => '<p>' . t('Your site offers the following OpenSearch description files: %links', array('%links' => theme('item_list', $links))) . '</p>',
   );
   $form['description']['opensearch_shortname'] = array(
     '#type' => 'textfield',
@@ -70,7 +65,7 @@ function opensearch_admin_settings() {
     '#default_value' => $opensearch_shortname,
     '#maxlength' => 16,
     '#size' => 16,
-    '#description' => t("A brief name that will appear in buttons, UI controls, etc., that reference this search content provider. The placeholder <code>%type</code> will be replaced with the appropriate search type (content, user etc.)"),
+    '#description' => t("A brief name that will appear in buttons, UI controls, etc., that reference this search content provider. The placeholder <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
     '#required' => true,
   );
   $form['description']['opensearch_description'] = array(
@@ -78,7 +73,7 @@ function opensearch_admin_settings() {
     '#title' => t('Description'),
     '#default_value' => $opensearch_description,
     '#maxlength' => 1024,
-    '#description' => t("A human readable text description of the search content provider. The placeholder <code>%site</code> will be replaced with your site's name, and <code>%type</code> will be replaced with the appropriate search type (content, user etc.)"),
+    '#description' => t("A human readable text description of the search content provider. The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
     '#required' => true,
   );
   $form['description']['opensearch_contact'] = array(
@@ -101,7 +96,7 @@ function opensearch_admin_settings() {
     '#default_value' => $opensearch_longname,
     '#maxlength' => 48,
     '#size' => 48,
-    '#description' => t("The name by which this search content provider is referred to in hypertext links, etc.  The placeholder <code>%site</code> will be replaced with your site's name, and <code>%type</code> will be replaced with the appropriate search type (content, user etc.)"),
+    '#description' => t("The name by which this search content provider is referred to in hypertext links, etc.  The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
   );
   $form['description']['opensearch_developer'] = array(
     '#type' => 'checkbox',
@@ -166,7 +161,7 @@ function opensearch_view() {
 
   if (trim($keys)) {
     // Log the search keys:
-    watchdog('search', t('OpenSearch: %keys (%type).', array('%keys' => theme('placeholder', $keys), '%type' => module_invoke($type, 'search', 'name'))), WATCHDOG_NOTICE, l(t('results'), 'search/'. $type .'/'. $keys));
+    watchdog('search', t('OpenSearch: %keys (@type).', array('%keys' => $keys, '@type' => module_invoke($type, 'search', 'name'))), WATCHDOG_NOTICE, l(t('results'), 'search/' . $type . '/' . $keys));
 
     // Collect the search results:
     $results = module_invoke($type, 'search', 'search', $keys);
@@ -228,8 +223,9 @@ function opensearch_feed($type, $keys, $results) {
  */
 function opensearch_get_description_defaults() {
   $args = array();
-  $args['opensearch_shortname'] = check_plain(variable_get('opensearch_shortname', '%type search'));
-  $args['opensearch_description'] = check_plain(variable_get('opensearch_description', t('%type search for %site.')));
+  // check_plain()s are needed for valid XML
+  $args['opensearch_shortname'] = check_plain(variable_get('opensearch_shortname', '@type search'));
+  $args['opensearch_description'] = check_plain(variable_get('opensearch_description', t('@type search for @site.')));
   $args['opensearch_contact'] =  check_plain(variable_get('opensearch_contact', variable_get('site_mail', ini_get('sendmail_from'))));
   $args['opensearch_tags'] = check_plain(variable_get('opensearch_tags', ''));
   $args['opensearch_longname'] = check_plain(variable_get('opensearch_longname', $args['opensearch_description']));
@@ -250,11 +246,12 @@ function opensearch_description($type) {
 
   $search_type = check_plain(module_invoke($type, 'search', 'name'));
   $site_name = check_plain(variable_get('site_name', 'drupal'));
-  $opensearch_shortname = t($opensearch_shortname, array('%type' => $search_type));
-  $opensearch_description = t($opensearch_description, array('%site' => $site_name, '%type' => $search_type));
-  $opensearch_longname = t($opensearch_longname, array('%site' => $site_name, '%type' => $search_type));
+  $opensearch_shortname = t($opensearch_shortname, array('@type' => $search_type));
+  $opensearch_description = t($opensearch_description, array('@site' => $site_name, '@type' => $search_type));
+  $opensearch_longname = t($opensearch_longname, array('@site' => $site_name, '@type' => $search_type));
   $url = check_url($base_url);
-
+  $url_search = url('search/' . $type, NULL, NULL, TRUE) . '/{searchTerms}?page={startPage}';
+  $url_opensearch = url('opensearch/' . $type, NULL, NULL, TRUE) . '/{searchTerms}?page={startPage}';
   $output = <<<DOC
 <?xml version="1.0" encoding="UTF-8"?>
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
@@ -262,9 +259,9 @@ function opensearch_description($type) {
   <Description>$opensearch_description</Description>
   <Contact>$opensearch_contact</Contact>
   <Url type="text/html"
-       template="$url/search/$type/{searchTerms}?page={startPage}"/>
+       template="$url_search"/>
   <Url type="application/rss+xml"
-       template="$url/opensearch/$type/{searchTerms}?page={startPage}"/>
+       template="$url_opensearch"/>
 DOC;
 
   if ($opensearch_tags != '') {
@@ -285,7 +282,7 @@ DOC;
   $output .= "\n  <AdultContent>$opensearch_adult_content</AdultContent>";
 
   // Locales
-  if (module_exist('locale')) {
+  if (module_exists('locale')) {
     $locales = locale_supported_languages();
     $locales = $locales['name'];
   }
@@ -296,7 +293,7 @@ DOC;
     $output .= "\n  <Language>$language</Language>";
   }
 
-  // Images
+  // Images: both logo and favicon can be provided
   // Themes haven't been initialized yet, so do it explicitely
   init_theme();
   $logo = theme_get_setting('logo');
@@ -320,7 +317,7 @@ DOC;
       $favicon_url = substr($favicon_url, 1);
     }
     list($width, $height, $type, $image_attributes) = @getimagesize($favicon_url);
-    $favicon_url = $url. '/'. $favicon_url;
+    $favicon_url = $url . '/' . $favicon_url;
     if ($height) {
       $height = 'height="'. $height. '"';
     }
@@ -328,13 +325,13 @@ DOC;
       $width = 'width="'. $width. '"';
     }
     if ($type) {
-      $type = 'type="'. image_type_to_mime_type($type). '"';
+      $type = 'type="' . image_type_to_mime_type($type) . '"';
     }
     $output .= "\n  <Image $height $width $type>$favicon_url</Image>";
   }
 
   $output .= "\n</OpenSearchDescription>";
-
-  drupal_set_header('Content-Type: application/opensearchdescription+xml; charset=utf-8');
+  // application/opensearchdescription+xml is not standard.
+  drupal_set_header('Content-Type: application/xml; charset=utf-8');
   print $output;
 }
