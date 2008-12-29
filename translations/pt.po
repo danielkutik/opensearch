@@ -1,0 +1,137 @@
+# translation to Português (Portugal)
+# $Id$
+# Portuguese translation of OpenSearch Feed Drupal module
+# Generated from files:
+#  opensearch.module,v 1.10 2008/04/27 20:15:23 hunmaat
+#  opensearch.info,v 1.1 2008/04/27 16:01:06 hunmaat
+#
+# Lopo Lencastre de Almeida <ipublicis@gmail.com>, 2008.
+msgid ""
+msgstr ""
+"Project-Id-Version: pt\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2008-04-27 22:21+0200\n"
+"PO-Revision-Date: 2008-12-29 22:54+0000\n"
+"Last-Translator: Lopo Lencastre de Almeida <ipublicis@gmail.com>\n"
+"Language-Team: Portuguese <drupal-portugal@googlegroups.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms:  nplurals=2; plural=(n != 1);"
+
+#: opensearch.module:13;0
+msgid "opensearch"
+msgstr "opensearch"
+
+#: opensearch.module:54
+msgid "Description file"
+msgstr "Ficheiro"
+
+#: opensearch.module:60
+msgid "Your site offers the following OpenSearch description files: %links"
+msgstr "O seu site oferece os seguintes ficheiros descriptivos OpenSearch: %links"
+
+#: opensearch.module:64
+msgid "Short name"
+msgstr "Nome curto"
+
+#: opensearch.module:68
+msgid "A brief name that will appear in buttons, UI controls, etc., that reference this search content provider. The placeholder <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"
+msgstr "Um nome curto que irá aparecer em botões, interfaces gráficos, etc. que referenciam este fornecedor de conteúdos para pesquisa. O código <code>@type</code> será substituido com o tipo apropriado de pesquisa (conteúdo, utilizador, etc.)"
+
+#: opensearch.module:73
+msgid "Description"
+msgstr "Descrição"
+
+#: opensearch.module:76
+msgid "A human readable text description of the search content provider. The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"
+msgstr "Uma descrição do fornecedor de conteúdos pesquisáveis. O código <code>@site</code> será substituido pelo nome do seu site, e o código <code>@type</code> será substituido pelo tipo apropriado de pesquisa (conteúdo, utilizador, etc.)"
+
+#: opensearch.module:81
+msgid "Contact"
+msgstr "Contacto"
+
+#: opensearch.module:84
+msgid "An email address at which the developer can be reached."
+msgstr "Um endereço de email para contacto com o desenvolvedor do site."
+
+#: opensearch.module:88
+msgid "Tags"
+msgstr "Palavras-chave"
+
+#: opensearch.module:91
+msgid "A space-delimited set of words that are used as keywords to identify and categorize this site's search content."
+msgstr "Um conjunto de palavras delimitadas por espaços que são usadas para categorizar e identificar os conteúdos pesquisáveis deste site."
+
+#: opensearch.module:95
+msgid "Long name"
+msgstr "Nome longo"
+
+#: opensearch.module:99
+msgid "The name by which this search content provider is referred to in hypertext links, etc.  The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"
+msgstr "O nome pelo qual este fornecedor de conteúdos pesquisáveis será referido em ligações, etc. O código <code>@site</code> será substituido pelo nome do seu site, e o código <code>@type</code> será substituido pelo tipo apropriado de pesquisa (conteúdo, utilizador, etc.)"
+
+#: opensearch.module:103
+msgid "Attribution"
+msgstr "Créditos"
+
+#: opensearch.module:106
+msgid "A list of all content sources or platforms that should be credited."
+msgstr "Uma lista de todas as fontes de conteúdos ou plataformas que devem ser creditadas."
+
+#: opensearch.module:110
+msgid "Syndication right"
+msgstr "Direitos"
+
+#: opensearch.module:113
+msgid "open—search results can be published or re-published without restriction. This is the default."
+msgstr "aberto — os resultados podem ser publicados ou re-publicados sem restrições. Este é o valor por defeito."
+
+#: opensearch.module:114
+msgid "limited—search results can be published on the client site, but not further republished."
+msgstr "limitado — os resultados podem ser publicados no cliente mas não podem ser re-publicados."
+
+#: opensearch.module:115
+msgid "private—search feed may be queried, but the results may not be displayed at the client site."
+msgstr "privado — os resultados podem ser pesquisados mas não podem ser visualizados no lado do cliente."
+
+#: opensearch.module:116
+msgid "closed—search feed should not be queried, and will disable the column for searches."
+msgstr "fechado — conteúdos não devem ser pesquisados e desactivará a coluna de pesquisas."
+
+#: opensearch.module:118
+msgid "The degree to which the search results provided by this search engine can be distributed."
+msgstr "O grau em que os resultados providenciados por este motor de pesquisa podem ser distribuidos."
+
+#: opensearch.module:122
+msgid "Adult content"
+msgstr "Conteúdo para adultos"
+
+#: opensearch.module:123
+msgid "Should be checked if the search results may contain material intended only for adults."
+msgstr "Deve ser marcado se os resultados incluirem material destinado somente a adultos."
+
+#: opensearch.module:156
+msgid "OpenSearch: %keys (@type)."
+msgstr "OpenSearch: %keys (@type)."
+
+#: opensearch.module:156
+msgid "results"
+msgstr "resultados"
+
+#: opensearch.module:195;156
+msgid "search"
+msgstr "pesquisa"
+
+#: opensearch.module:220
+msgid "@type search for @site."
+msgstr "pesquisa de @type em @site."
+
+#: opensearch.info:0
+msgid "OpenSearch Feed"
+msgstr "OpenSearch Feed"
+
+#: opensearch.info:0
+msgid "Allows Drupal search results to be returned in the OpenSearch RSS format"
+msgstr "Permite que os resultados sejam devolvidos no formato OpenSearch RSS"
+
