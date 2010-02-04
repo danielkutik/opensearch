@@ -1,0 +1,45 @@
+# $Id$
+# All the dates reported here are referred to UTC.
+
+Opensearch 6.x-1 2010-02-02
+--------------------------
+by Dave Reid: Fixed use of global $language instead of $locale.
+by Dave Reid: Fixed coder warnings and style fixes.
+#661508 by jpmckinney, Dave Reid: Removed workaround for Apache Solr results links.
+by Dave Reid: Fixed PHP notices and token replacement on results feed.
+by Dave Reid: Fixed PHP notices on settings page.
+#701878 by kiamlaluno: Change opensearch_description() to use a theme function.
+
+Opensearch 6.x-1 2010-02-01
+--------------------------
+#669648 by kiamlaluno: Code doesn't respect the maximum size for the Opensearch description tags content.
+#668708 by kiamlaluno: Provide settings for each search page.
+#667606 by kiamlaluno: Revamp the settings page.
+
+Opensearch 6.x-1 2010-01-30
+--------------------------
+#698718 by kiamlaluno: Save the settings in a database table.
+
+Opensearch 6.x-1 2010-01-28
+--------------------------
+669664: by kiamlaluno: First argument of t() is not a literal string.
+#667632 by Dave Reid, kiamlaluno: Use token for variable replacement instead of @placeholders.
+
+Opensearch 6.x-1 2009-12-29
+--------------------------
+#669564 by kiamlaluno: The code uses a not defined global variable.
+#668894 by kiamlaluno: Optimize opensearch_description().
+
+Opensearch 6.x-1 2009-12-25
+--------------------------
+#605378 by Dave Reid: Fixed RSS validation on results feed.
+#667724 by Dave Reid: Fixed most of the PHP notices in opensearch_feed().
+#667718 by Dave Reid: Use drupal_add_link instead of ugly XML icon on search result pages
+#667672 by Dave Reid: Split the description and search feeds into separate menu items and callbacks.
+#667610 by Dave Reid: Use hook_form_FORM_ID_alter instead of hook_form_alter().
+#667608 by Dave Reid: Split code into opensearch.admin.inc and opensearch.pages.inc.
+#667612 by Dave Reid: Fixed initial code clean-up.
+
+Opensearch 6.x-1 2009-12-16
+--------------------------
+#605378 by petercasier: Opensearch feed does not validate.

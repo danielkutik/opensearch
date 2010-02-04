@@ -1,0 +1,96 @@
+<?php
+// $Id$
+
+class OpenSearchTestCase extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'OpenSearch',
+      'description' => 'Tests for the OpenSearch module.',
+      'group' => 'OpenSearch',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('search', 'token', 'opensearch');
+    
+    $this->account = $this->drupalCreateUser(
+      array('search content', 'administer search', 'access content')
+    );
+    
+    $this->drupalLogin($this->account);
+  }
+
+  function testSearchTokens() {
+    $modules = array('node', 'user');
+    
+    foreach ($modules as $module) {
+      $expected = array();
+      $test = '[search-module] [search-name] [search-name-lowercase]';
+
+      $expected[] = $module;
+      $expected[] = module_invoke($module, 'search', 'name');
+      $expected[] = drupal_strtolower(
+        module_invoke($module, 'search', 'name')
+      );
+
+      $expected = implode(' ', $expected);
+
+      $result = token_replace($test, 'search', $module);
+
+      $this->assertTrue($result == $expected, t('Search tokens for %module are correct.'), array('%module' => $module)));
+    }
+  }
+  
+  function testValidResultsFeed() {
+    //$node1 = $this->drupalCreateNode(array('body' => 'found test'));
+    //$node2 = $this->drupalCreateNode(array('body' => 'not-found test'));
+    //search_cron();
+    //$this->drupalGet('search/node/found');
+    $this->assertW3CValidFeed('opensearch/node/found');
+  }
+
+  protected function assertW3CValidFeed($url, $options = array()) {
+    $this->drupalGet($url, $options);
+
+    // Build and perform the cURL request to the W3C validator.
+    $fields = array(
+      'rawdata' => $this->drupalGetContent(),
+      'output' => 'soap12',
+    );
+    $curl_options = array(
+      CURLOPT_URL => 'http://validator.w3.org/feed/check.cgi',
+      CURLOPT_POST => TRUE,
+      CURLOPT_POSTFIELDS => drupal_query_string_encode($fields),
+    );
+    $out = $this->curlExec($curl_options);
+
+    if ($this->assertResponse(200)) {
+      // Verbose output the XML response from the validator.
+      $this->verbose('<pre>' . htmlspecialchars($this->drupalGetContent()) . '</pre>');
+    }
+    else {
+      return;
+    }
+
+    // Because the XML contains tags named like '<m:tagname>' which cannot be
+    // parsed by SimpleXML, we remove the colon from the tags.
+    $response = preg_replace('|<([/\w]+)(:)|m', '<$1', $this->drupalGetContent());
+    $response = preg_replace('|(\w+)(:)(\w+=\")|m', '$1$3', $response);
+    $xml = simplexml_load_string($response);
+
+    // Assert the overal validitiy of the feed.
+    $response = $xml->envBody->mfeedvalidationresponse;
+    $this->assertTrue($response->mvalidity, t('Feed passed validation.'));
+
+    // Fail on errors, and add debugging messages for warnings and info.
+    foreach ($response->merrors->merrorlist->error as $error) {
+      $this->fail($error->text);
+    }
+    foreach ($response->mwarnings->mwarninglist->warning as $warning) {
+      $this->assert('debug', $warning->text, 'Validation warning');
+    }
+    foreach ($response->minformations->minfolist->info as $info) {
+      $this->assert('debug', $info->text, 'Validation information');
+    }
+  }
+}

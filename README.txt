@@ -1,9 +1,21 @@
+# $Id$
+
 This module adds OpenSearch 1.1 support to Drupal.
+Search queries for all the modules that use hook_search() are available at
+/opensearch/type/keywords. An OpenSearch description is found at
+/opensearch/type.
+An auto discovery header is added to all pages for node search, while auto
+discovery for other searches is added on the specific subtype pages.
 
-Search queries for all the modules that use hook_search() are available at /opensearch/type/keywords. An OpenSearch description is found at /opensearch/type.
+* Original maintainer:
+Steven Wittens (http://drupal.org/user/10)
 
-An autodiscovery header is added to all pages for node search, while autodiscovery for other searches is added on the specific subtype pages.
+* Previous maintainers:
+ŐRY Máté (http://drupal.org/user/26428)
+Audrey Foo (http://drupal.org/user/109516)
+Robert Douglass (http://drupal.org/user/5449)
+Lopo Lencastre de Almeida (http://drupal.org/user/26117)
 
-Mate Ory / orymate at gmail
-
-Original maintainer: Steven Wittens / steven@acko.net
+* Current maintainers:
+Alberto Paderno (http://drupal.org/user/55077)
+Dave Reid (http://drupal.org/user/53892)

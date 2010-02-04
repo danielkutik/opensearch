@@ -2,324 +2,477 @@
 // $Id$
 
 /**
- * Implementation of hook_menu().
+ * @file
+ * Allows Drupal search results to be returned in the OpenSearch RSS format.
  */
-function opensearch_menu($may_cache) {
-  $items = array();
 
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/settings/opensearch',
-      'title' => t('opensearch'),
-      'callback' => 'opensearch_admin_settings',
-      'access' => user_access('administer site configuration'),
-      'type' => MENU_NORMAL_ITEM,
-    );
+/**
+ * Implements hook_init().
+ */
+function opensearch_init() {
+  if ($module = _opensearch_is_search_page()) {
+    if ($info = opensearch_type_load($module)) {
+      // If this is a search-related page, add the OpenSearch link for the current
+      // search routine.
+      opensearch_add_opensearch_link($info);
 
-    foreach (module_list() as $name) {
-      if (module_hook($name, 'search') && $title = module_invoke($name, 'search', 'name')) {
-        $items[] = array(
-          'path' => 'opensearch/' . $name,
-          'title' => $title,
-          'callback' => 'opensearch_view',
-          'access' => user_access('search content'),
-          'type' => MENU_LOCAL_TASK);
+      if (_opensearch_is_search_result_page()) {
+        // If this is a seach result, add a link to the OpenSearch results RSS.
+        // @todo Use something like drupal_add_feed() with a nice OpenSearch icon.
+        $keywords = _opensearch_get_search_keywords();
+        $query = $_GET;
+        unset($query['q']);
+
+        $result_title = _opensearch_check_plain($info->settings['rss_title'], $module);
+        $result_url = url(
+          'opensearch/' . $module . '/' . drupal_urlencode($keywords),
+          array('absolute' => TRUE, 'query' => $query)
+        );
+        drupal_add_feed($result_url, $result_title);
       }
     }
   }
   else {
-    $type = (arg(0) == 'search' && arg(1) != '') ? arg(1) : 'node';
-    $search_type = check_plain(module_invoke($type, 'search', 'name'));
-    $opensearch_shortname = t(check_plain(variable_get('opensearch_shortname', '@type search')), array('@type' => $search_type));
-    drupal_add_link(array(
-      'rel' => 'search',
-      'href' => url('opensearch/'. $type, NULL, NULL, TRUE),
-      'type' => 'application/opensearchdescription+xml',
-      'title' => $opensearch_shortname
-    ));
+    // On non-search pages, add links for all available OpenSearches.
+    foreach (module_implements('search') as $module) {
+      if ($info = opensearch_type_load($module)) {
+        opensearch_add_opensearch_link($info);
+      }
+    }
   }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function opensearch_menu() {
+  $items['admin/settings/search/search'] = array(
+    'title' => 'Search',
+    'access arguments' => array('administer search'),
+    'weight' => -1,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'search.admin.inc',
+    'file path' => drupal_get_path('module', 'search'),
+  );
+  $items['admin/settings/search/opensearch'] = array(
+    'title' => 'OpenSearch',
+    'description' => 'Allow search results to be returned in the OpenSearch RSS format.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('opensearch_admin_settings'),
+    'access arguments' => array('administer search'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'opensearch.admin.inc',
+  );
+  $items['admin/settings/search/opensearch/%opensearch_type'] = array(
+    'title' => 'OpenSearch',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('opensearch_admin_type_settings', 4),
+    'access arguments' => array('administer search'),
+    'type' => MENU_CALLBACK,
+    'file' => 'opensearch.admin.inc',
+  );
+  $items['opensearch/%opensearch_type'] = array(
+    'page callback' => 'opensearch_description',
+    'page arguments' => array(1),
+    'access arguments' => array('search content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'opensearch.pages.inc',
+  );
+  $items['opensearch/%opensearch_type/%menu_tail'] = array(
+    'page callback' => 'opensearch_view',
+    'page arguments' => array(1),
+    'access arguments' => array('search content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'opensearch.pages.inc',
+  );
 
   return $items;
 }
 
-function opensearch_admin_settings() {
-  extract(opensearch_get_description_defaults(), EXTR_SKIP);
-
-  foreach (module_implements('search') as $type) {
-    $links[] = l("opensearch/$type", "opensearch/$type");
-  }
-
-  $form['description'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Description file'),
-    '#collapsible' => true,
-  );
-
-  $form['description']['opensearch_prefix'] = array(
-    '#type' => 'markup',
-    '#value' => '<p>' . t('Your site offers the following OpenSearch description files: %links', array('%links' => theme('item_list', $links))) . '</p>',
-  );
-  $form['description']['opensearch_shortname'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Short name'),
-    '#default_value' => $opensearch_shortname,
-    '#maxlength' => 16,
-    '#size' => 16,
-    '#description' => t("A brief name that will appear in buttons, UI controls, etc., that reference this search content provider. The placeholder <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
-    '#required' => true,
-  );
-  $form['description']['opensearch_description'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Description'),
-    '#default_value' => $opensearch_description,
-    '#maxlength' => 1024,
-    '#description' => t("A human readable text description of the search content provider. The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
-    '#required' => true,
-  );
-  $form['description']['opensearch_contact'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Contact'),
-    '#default_value' => $opensearch_contact,
-    '#maxlength' => 64,
-    '#description' => t("An email address at which the developer can be reached."),
-  );
-  $form['description']['opensearch_tags'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Tags'),
-    '#default_value' => $opensearch_tags,
-    '#maxlength' => 256,
-    '#description' => t("A space-delimited set of words that are used as keywords to identify and categorize this site's search content."),
-  );
-  $form['description']['opensearch_longname'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Long name'),
-    '#default_value' => $opensearch_longname,
-    '#maxlength' => 48,
-    '#size' => 48,
-    '#description' => t("The name by which this search content provider is referred to in hypertext links, etc.  The placeholder <code>@site</code> will be replaced with your site's name, and <code>@type</code> will be replaced with the appropriate search type (content, user etc.)"),
-  );
-  $form['description']['opensearch_attribution'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Attribution'),
-    '#default_value' => $opensearch_attribution,
-    '#maxlength' => 256,
-    '#description' => t("A list of all content sources or platforms that should be credited."),
-  );
-  $form['description']['opensearch_syndication_right'] = array(
-    '#type' => 'radios',
-    '#title' => t('Syndication right'),
-    '#default_value' => $opensearch_syndication_right,
-    '#options' => array(
-      'open' => t('open—search results can be published or re-published without restriction. This is the default.'),
-      'limited' => t('limited—search results can be published on the client site, but not further republished.'),
-      'private' => t('private—search feed may be queried, but the results may not be displayed at the client site.'),
-      'closed' => t('closed—search feed should not be queried, and will disable the column for searches.'),
+/**
+ * Implements hook_theme().
+ */
+function opensearch_theme() {
+  return array(
+    'opensearch_description' => array(
+      'arguments' => array('info' => NULL),
+      'template' => 'opensearch-description',
     ),
-    '#description' => t('The degree to which the search results provided by this search engine can be distributed.'),
+    'opensearch_description_files' => array(
+      'arguments' => array('form' => array()),
+      'file' => 'opensearch.admin.inc',
+    ),
   );
-  $form['description']['opensearch_adult_content'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Adult content'),
-    '#description' => t('Should be checked if the search results may contain material intended only for adults.'),
-    '#default_value' => $opensearch_adult_content,
-  );
-
-  return system_settings_form('opensearch_admin_settings', $form);
-}
-
-
-function opensearch_form_alter($form_id, &$form) {
-  if ($form_id == 'search_form' && arg(2)) {
-    // for pagination etc.
-    $get = drupal_query_string_encode($_GET, array('q'));
-    $form['basic']['inline']['rss'] = array('#type' => 'markup', '#value' => theme('xml_icon', url('opensearch/' . arg(1). '/'. urlencode(search_get_keys()), trim($get)?$get:NULL)));
-  }
 }
 
 /**
- * Menu callback; presents an opensearch results page.
+ * Implements hook_token_list().
  */
-function opensearch_view() {
-  $type = arg(1);
-  $keys = search_get_keys();
+function opensearch_token_list($type = 'all') {
+  $tokens = array();
 
-  // OpenSearch pages are 1-indexed
-  $_GET['page']--;
-
-  // Only perform search if there is non-whitespace search term:
-  if (!module_hook($type, 'search')) {
-    return drupal_not_found();
+  if ($type == 'search' || $type == 'all') {
+    $tokens['search']['search-module'] = t('The module handling the search routine.');
+    $tokens['search']['search-name'] = t('The title of the search routine.');
+    $tokens['search']['search-name-lowercase'] = t('The title of the search routine in lower case characters.');
+    $tokens['search']['search-keywords'] = t('The keywords of the current search request.');
+    $tokens['search']['search-keywords-raw'] = t('The unfiltered keywords of the current search request.');
   }
 
-  if (trim($keys)) {
-    // Log the search keys:
-    watchdog('search', t('OpenSearch: %keys (@type).', array('%keys' => $keys, '@type' => module_invoke($type, 'search', 'name'))), WATCHDOG_NOTICE, l(t('results'), 'search/' . $type . '/' . $keys));
-
-    // Collect the search results:
-    $results = module_invoke($type, 'search', 'search', $keys);
-
-    return opensearch_feed($type, $keys, $results);
-  }
-  else {
-    return opensearch_description($type);
-  }
+  return $tokens;
 }
 
 /**
- * Return an open search results feed.
- */
-function opensearch_feed($type, $keys, $results) {
-  global $base_url, $locale;
-
-  $namespaces = array(
-    'xmlns:dc="http://purl.org/dc/elements/1.1/"',
-    'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"',
-    'xmlns:relevance="http://a9.com/-/opensearch/extensions/relevance/1.0/"'
-  );
-
-  foreach ($results as $result) {
-    $items .= format_rss_item($result['title'], $result['link'], $result['snippet'], array('relevance:score' => (float)$result['score']));
-  }
-
-  $args = array(
-    'opensearch:totalResults' => $GLOBALS['pager_total_items'][0],
-    'opensearch:startIndex' => $GLOBALS['pager_page_array'][0] * 10 + 1,
-    'opensearch:itemsPerPage' => 10,
-    array('key' => 'opensearch:link', 'attributes' => array('href' => url('opensearch/'. $type, NULL, NULL, TRUE), 'type' => 'application/opensearchdescription+xml')),
-    array('key' => 'opensearch:Query', 'attributes' => array('role' => 'request', 'searchTerms' => $keys)),
-  );
-
-  $output = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
-  $output .= "<rss version=\"2.0\" xml:base=\"". url('', NULL, NULL, TRUE) ."\" ". implode(' ', $namespaces) .">\n";
-  $output .= format_rss_channel(
-    $keys .' - '. variable_get('site_name', 'drupal') .' '. module_invoke($type, 'search', 'name') .' '. t('search'),
-    $base_url,
-    variable_get('site_mission', ''),
-    $items,
-    $locale,
-    $args
-  );
-  $output .= "</rss>\n";
-
-  drupal_set_header('Content-Type: application/rss+xml; charset=utf-8');
-  print $output;
-}
-
-/**
- * Defines some default values for the description file
+ * Implements hook_token_values().
  *
- * @param string $type
- *   'node', 'user', or any other type for which hook_search is implemented
- * @return  Array $args
- *   meant to be added to the local scope of the calling function using extract()
+ * @param $object
+ *   The module name of the search routine.
  */
-function opensearch_get_description_defaults() {
-  $args = array();
-  // check_plain()s are needed for valid XML
-  $args['opensearch_shortname'] = check_plain(variable_get('opensearch_shortname', '@type search'));
-  $args['opensearch_description'] = check_plain(variable_get('opensearch_description', t('@type search for @site.')));
-  $args['opensearch_contact'] =  check_plain(variable_get('opensearch_contact', variable_get('site_mail', ini_get('sendmail_from'))));
-  $args['opensearch_tags'] = check_plain(variable_get('opensearch_tags', ''));
-  $args['opensearch_longname'] = check_plain(variable_get('opensearch_longname', $args['opensearch_description']));
-  $args['opensearch_attribution'] = check_plain(variable_get('opensearch_attribution', ''));
-  $args['opensearch_syndication_right'] = check_plain(variable_get('opensearch_syndication_right', 'open'));
-  $args['opensearch_adult_content'] = check_plain(variable_get('opensearch_adult_content', 0));
+function opensearch_token_values($type, $object = NULL, $options = array()) {
+  $values = array();
 
-  return $args;
+  if ($type == 'search') {
+    $name = module_invoke($object, 'search', 'name');
+    $values['search-module'] = $object;
+    $values['search-name'] = $name;
+    $values['search-name-lowercase'] = drupal_strtolower($name);
+    $values['search-keywords'] = check_plain(_opensearch_get_search_keywords());
+    $values['search-keywords-raw'] = _opensearch_get_search_keywords();
+  }
+
+  return $values;
 }
 
 /**
- * Return an open search description feed.
+ * Menu object load function.
  */
-function opensearch_description($type) {
-  global $base_url, $locale;
-  extract(opensearch_get_description_defaults(), EXTR_SKIP);
+function opensearch_type_load($type) {
+  if (!module_exists($type)) {
+    return FALSE;
+  }
 
-  $search_type = check_plain(module_invoke($type, 'search', 'name'));
-  $site_name = check_plain(variable_get('site_name', 'drupal'));
-  $opensearch_shortname = t($opensearch_shortname, array('@type' => $search_type));
-  $opensearch_description = t($opensearch_description, array('@site' => $site_name, '@type' => $search_type));
-  $opensearch_longname = t($opensearch_longname, array('@site' => $site_name, '@type' => $search_type));
-  $url = check_url($base_url);
-  $url_search = str_replace(array('%7B', '%7D', '&'), array('{', '}', '&amp;'), url('search/' . $type . '/{searchTerms}', 'page={startPage}', NULL, TRUE));
-  $url_opensearch = str_replace(array('%7B', '%7D', '&'), array('{', '}', '&amp;'), url('opensearch/' . $type . '/{searchTerms}', 'page={startPage}', NULL, TRUE));
-  $output = <<<DOC
-<?xml version="1.0" encoding="UTF-8"?>
-<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
-  <ShortName>$opensearch_shortname</ShortName>
-  <Description>$opensearch_description</Description>
-  <Contact>$opensearch_contact</Contact>
-  <Url type="text/html"
-       template="$url_search"/>
-  <Url type="application/rss+xml"
-       template="$url_opensearch"/>
-DOC;
+  // Check if this search type is enabled.
+  $enabled = variable_get('opensearch_enabled_types', NULL);
+  if (isset($enabled) && !in_array($type, array_filter($enabled))) {
+    return FALSE;
+  }
 
-  if ($opensearch_tags != '') {
-    $output .= "\n  <Tags>$opensearch_tags</Tags>";
-  }
-  if ($opensearch_longname != '') {
-    $output .= "\n  <LongName>$opensearch_longname</LongName>";
-  }
-  if ($opensearch_attribution) {
-    $output .= "\n  <Attribution>$opensearch_attribution</Attribution>";
-  }
-  if ($opensearch_syndication_right) {
-    $output .= "\n  <SyndicationRight>$opensearch_syndication_right</SyndicationRight>";
-  }
-  $output .= "\n  <AdultContent>$opensearch_adult_content</AdultContent>";
+  $info = new stdClass();
+  $info->type = $type;
+  $info->settings = _opensearch_load_settings($type);
 
-  // Locales
-  if (module_exists('locale')) {
-    $locales = locale_supported_languages();
-    $locales = $locales['name'];
+  $feeds = variable_get('opensearch_enabled_feeds', NULL);
+  $info->feed = isset($feeds) && in_array($type, array_filter($feeds));
+
+  return $info;
+}
+
+/**
+ * Process variables for opensearch-description.tpl.php
+ */
+function template_preprocess_opensearch_description(&$variables) {
+  global $base_path;
+
+  $info = $variables['info'];
+
+  $variables['adult_content'] = $info->settings['adult_content'];
+  $variables['attribution'] = _opensearch_check_plain($info->settings['attribution'], $info->type, 256);
+  $variables['contact'] = _opensearch_check_plain($info->settings['contact'], $info->type);
+  $variables['description'] = _opensearch_check_plain($info->settings['description'], $info->type, 1024);
+  $variables['longname'] = _opensearch_check_plain($info->settings['longname'], $info->type, 48);
+  $variables['shortname'] = _opensearch_check_plain($info->settings['shortname'], $info->type, 16);
+  $variables['syndication_right'] = $info->settings['syndication_right'];
+  $variables['tags'] = _opensearch_unique_values(
+    _opensearch_check_plain($info->settings['tags'], $info->type, 256)
+  );
+  $variables['url_opensearch'] = str_replace(
+    array('%7B', '%7D', '&'),
+    array('{', '}', '&amp;'),
+    url('opensearch/' . $info->type . '/{searchTerms}', array('query' => 'page={startPage}', 'absolute' => TRUE))
+  );
+  $variables['url_search'] = str_replace(
+    array('%7B', '%7D', '&'),
+    array('{', '}', '&amp;'),
+    url('search/' . $info->type . '/{searchTerms}', array('query' => 'page={startPage}', 'absolute' => TRUE))
+  );
+  $variables['url_self'] = url('opensearch/' . $info->type, array('absolute' => TRUE));
+
+  $languages = language_list('enabled');
+  $variables['languages'] = $languages[1];
+
+  $bool = (
+    $info->settings['image_type'] == 'theme' ||
+    (
+      $info->settings['image_type'] == 'theme' &&
+      empty($info->settings['image_custom'])
+    )
+  );
+
+  if ($bool) {
+    init_theme();
+    $image_path = theme_get_setting('favicon');
   }
   else {
-    $locales = array($locale => $locale);
-  }
-  foreach (array_keys($locales) as $language) {
-    $output .= "\n  <Language>$language</Language>";
+    $image_path = $info->settings['image_custom'];
   }
 
-  // Images: both logo and favicon can be provided
-  // Themes haven't been initialized yet, so do it explicitely
-  init_theme();
-  $logo = theme_get_setting('logo');
-  if (theme_get_setting('toggle_logo') && ($logo_url = check_url(theme_get_setting('logo_path')))) {
-    list($width, $height, $type, $image_attributes) = @getimagesize($logo_url);
-    $logo_url = $url. '/'. $logo_url;
-    if ($height) {
-      $height = 'height="'. $height. '"';
+  if (isset($image_path)) {
+    if (strpos($image_path, $base_path) === 0) {
+      $image_path = drupal_substr($image_path, drupal_strlen($base_path));
     }
-    if ($width) {
-      $width = 'width="'. $width. '"';
+
+    if (!empty($image_path)) {
+      $attrs = array();
+      $image_attributes = @getimagesize($image_path);
+      $url_options = array('absolute' => TRUE);
+
+      if (!empty($image_attributes[0])) {
+        $attrs['width'] = $image_attributes[0];
+      }
+      if (!empty($image_attributes[1])) {
+        $attrs['height'] = $image_attributes[1];
+      }
+      if (!empty($image_attributes['mime'])) {
+        $attrs['type'] = $image_attributes['mime'];
+      }
+
+      $variables['image_attributes'] = drupal_attributes($attrs);
+      $variables['image_url'] = url($image_path, array('absolute' => TRUE));
     }
-    if ($type) {
-      $type = 'type="'. image_type_to_mime_type($type). '"';
-    }
-    $output .= "\n  <Image $height $width $type>$logo_url</Image>";
   }
-  if (theme_get_setting('toggle_favicon') && ($favicon_url = check_url(theme_get_setting('favicon')))) {
-    // The favicon URL comes (inconveniently) with an extra /
-    if (substr($favicon_url, 0, 1) == '/') {
-      $favicon_url = substr($favicon_url, 1);
-    }
-    list($width, $height, $type, $image_attributes) = @getimagesize($favicon_url);
-    $favicon_url = $url . '/' . $favicon_url;
-    if ($height) {
-      $height = 'height="'. $height. '"';
-    }
-    if ($width) {
-      $width = 'width="'. $width. '"';
-    }
-    if ($type) {
-      $type = 'type="' . image_type_to_mime_type($type) . '"';
-    }
-    $output .= "\n  <Image $height $width $type>$favicon_url</Image>";
+}
+
+/**
+ * Adds a OpenSearch <link> tag in the current page's <head>.
+ *
+ * @param $info
+ *   A search info object from opensearch_type_load().
+ */
+function opensearch_add_opensearch_link($info) {
+  $link = array(
+    'href' => url('opensearch/'. $info->type, array('absolute' => TRUE)),
+    'title' => _opensearch_check_plain($info->settings['longname'], $info->type),
+    'rel' => 'search',
+    'type' => 'application/opensearchdescription+xml',
+  );
+  drupal_add_link($link);
+}
+
+/**
+ * Filter the content of a string used in the OpenSearch descriptor.
+ *
+ * @param $string
+ *   The string to be filtered.
+ * @param $type
+ *   The module implementing the search hook.
+ * @param $length
+ *   The length of the returned string; if the parameter is not used,
+ *   or it is equal to 0, then the string will not be truncated.
+ *
+ * @return
+ *  The filtered string.
+ */
+function _opensearch_check_plain($string, $type, $length = 0) {
+  $result = check_plain(
+    strip_tags(
+      decode_entities(
+        preg_replace(
+          '/(\r\n?|\n)/', '',
+          token_replace($string, 'search', $type)
+        )
+      )
+    )
+  );
+
+  if ($length) {
+    $result = truncate_utf8($result, $length);
   }
 
-  $output .= "\n</OpenSearchDescription>";
-  // application/opensearchdescription+xml is not standard.
-  drupal_set_header('Content-Type: application/xml; charset=utf-8');
-  print $output;
+  return $result;
+}
+
+/**
+ * Return the default values for the settings.
+ *
+ * @return
+ *   An array of default values.
+ *
+ * @see _opensearch_load_settings()
+ * @see _opensearch_save_settings()
+ */
+function _opensearch_default_settings() {
+  $defaults = array(
+    'adult_content' => 0,
+    'attribution' => '',
+    'contact' => '[site-mail]',
+    'description' => '[search-name] search for [site-name].',
+    'image_type' => 'theme',
+    'image_custom' => '',
+    'longname' => '[search-name] search for [site-name]',
+    'rss_description' => '[search-name] search results for "[search-keywords]" at [site-name]',
+    'rss_title' => '[site-name] [search-name] search: [search-keywords]',
+    'shortname' => '[search-name] search',
+    'syndication_right' => 'open',
+    'tags' => '',
+  );
+  
+  drupal_alter('opensearch_default_settings', $defaults);
+  
+  return $defaults;
+}
+
+/**
+ * Get the search keywords for the current page request.
+ *
+ * @return
+ *   A string with the search keywords.
+ */
+function _opensearch_get_search_keywords() {
+  return trim(search_get_keys());
+}
+
+/**
+ * Check if the current page is a front-end search page.
+ *
+ * This should also match any search results pages as well.
+ *
+ * @return
+ *   The module responsible for the current search routine, or NULL if the
+ *   current page is not a search page.
+ *
+ * @see _opensearch_is_search_result_page()
+ */
+function _opensearch_is_search_page() {
+  if ((arg(0) == 'search' || arg(0) == 'opensearch') && ($module = arg(1)) && module_invoke($module, 'search', 'name')) {
+    return $module;
+  }
+}
+
+/**
+ * Check if the current page is a front-end search results page.
+ *
+ * @return
+ *   TRUE if the current request is a search result, otherwise FALSE.
+ *
+ * @see _opensearch_is_search_page()
+ */
+function _opensearch_is_search_result_page() {
+  if ($module = _opensearch_is_search_page()) {
+    // Core search modules only provide results if a search term is provided
+    // using paths like search/node/my-search-term.
+    if (arg(2)) {
+      return TRUE;
+    }
+
+    // Apache Solr can use paths like search/apache_solr/?filters=... and not
+    // have a specific search term provided, so special case this condition.
+    // @todo Research using $module_search('search', arg(2)) for non-FALSE result.
+    if ($module == 'apachesolr_search' && !empty($_GET['filters'])) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Load the module settings.
+ *
+ * @param $type
+ *   The module implementing the search hook to which the options refer to, or
+ *   '-default-,
+ *
+ * @return
+ *   An array containing the module settings.
+ */
+function _opensearch_load_settings($type = '-default-') {
+  $row = db_fetch_object(
+    db_query_range(
+      "SELECT settings FROM {opensearch} WHERE type = '%s'", $type, 0, 1
+    )
+  );
+  $settings = array();
+
+  if ($row) {
+    $settings = empty($row->settings) ? array() : unserialize($row->settings);
+
+  }
+
+  $settings += _opensearch_default_settings();
+  
+  return $settings;
+}
+
+/**
+ * Save the module settings.
+ *
+ * @param $settings
+ *   The settings array.
+ * @param $type
+ *   The module implementing the search hook to which the options refer to, or
+ *   '-default-,
+ *
+ * @return
+ *   An array containing the module settings.
+ */
+function _opensearch_save_settings($settings = array(), $type = '-default-') {
+  $result = db_fetch_object(
+    db_query(
+      "SELECT id, type, settings FROM {opensearch} WHERE type = '%s'",
+      $type
+    )
+  );
+
+  if ($result === FALSE) {
+    $row = new stdClass();
+    $row->type = $type;
+  }
+  else {
+    $row = $result;
+  }
+
+  $row->settings = $settings;
+
+  drupal_write_record('opensearch', $row, $result === FALSE ? array() : 'id');
+}
+
+/**
+ * Remove the duplicates from a list of items separated from the separator,
+ * preserving the order in which they appear.
+ * @param $text
+ *   The string containing the list of items concatenated using $separator.
+ * @param $separator
+ *   The string used to split the string into an array. A space will be appended
+ *   to the string before it is used to create the string from the array of
+ *   unique items found in the string passed as argument.
+ * @param $max_items
+ *   The maximum number of items accepted in the returned array; the default
+ *   value is -1, which means no limit.
+ *
+ * @return
+ *   A string containing only unique items present in the string of concatenated
+ *   items.
+ */
+function _opensearch_unique_values($text, $separator = ' ', $max_items = -1) {
+  $lc_values = array();
+  $unique_values = array();
+
+  if (empty($text)) {
+    return '';
+  }
+
+  foreach (array_filter(array_map('trim', explode($separator, $text))) as $item) {
+    $lowercase = drupal_strtolower($item);
+
+    if (!in_array($lowercase, $lc_values)) {
+      $lc_values[] = $lowercase;
+      $unique_values[] = $item;
+    }
+  }
+
+  if ($max_items > 0) {
+    $unique_values = array_slice($uniq_values, 0, $max_items);
+  }
+
+  return implode("$separator", $unique_values);
 }
