@@ -8,6 +8,33 @@
 
 
 /**
+ * Allows to access the Drupal variables used by the module.
+ */
+class OpenSearchVars extends Vars {
+  /**
+   * Constructs a OpenSearchVars object.
+   */
+  public function __construct() {
+   parent::__construct('opensearch', array(
+     'sysVars' => array(
+       'menu_rebuild_needed' => FALSE,
+     )
+   ));
+  }
+
+  /**
+   * Implements Vars::getDefaults().
+   */
+  protected function getDefaults() {
+    return array(
+      'opensearch_enabled_types' => array('value' => NULL),
+      'opensearch_enabled_feeds' => array('value' => NULL),
+      'opensearch_dismiss_tokens_warning' => array('value' => FALSE),
+    );
+  }
+}
+
+/**
  * Defines the API version currently implemented by the module.
  */
 define('OPENSEARCH_API', '2.0');
@@ -96,6 +123,8 @@ function opensearch_theme() {
  * Menu object load function.
  */
 function opensearch_type_load($type) {
+  $vars = new OpenSearchVars();
+
   if (!module_exists($type)) {
     return FALSE;
   }
@@ -107,7 +136,7 @@ function opensearch_type_load($type) {
   }
 
   // Check if this search type is enabled.
-  $enabled = variable_get('opensearch_enabled_types', NULL);
+  $enabled = $vars['opensearch_enabled_types'];
   $bool = (
     empty($enabled) ||
     (isset($enabled) && in_array($type, array_filter($enabled)))
@@ -117,7 +146,7 @@ function opensearch_type_load($type) {
     $info->type = $type;
     $info->settings = opensearch_load_settings($type);
 
-    $feeds = variable_get('opensearch_enabled_feeds', NULL);
+    $feeds = $vars['opensearch_enabled_feeds'];
 
     $info->feed = (
       isset($feeds) ||
@@ -131,7 +160,7 @@ function opensearch_type_load($type) {
 }
 
 /**
- * Processes variables for opensearch-description.tpl.php
+ * Processes variables for opensearch-description.tpl.php.
  */
 function template_preprocess_opensearch_description(&$variables) {
   global $base_path;
@@ -219,6 +248,31 @@ function opensearch_add_opensearch_link($info) {
     'type' => 'application/opensearchdescription+xml',
   );
   drupal_add_link($link);
+}
+
+/**
+ * Verifies the current API version is included between two values passes as
+ * arguments.
+ *
+ * @param $minimum
+ *   The minimum API version required.
+ * @param $maximum
+ *   The maximum version required. This argument is optional; the current API
+ *   will be checked against this value only if it is passed to the function.
+ *
+ * @return
+ *   TRUE, if the current API version is included between the passed values.
+ */
+function opensearch_api($minimum, $maximum = NULL) {
+  if (version_compare(OPENSEARCH_API, $minimum, '<')) {
+    return FALSE;
+  }
+
+  if (isset($maximum) && version_compare(OPENSEARCH_API, $maximum, '>')) {
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 /**
@@ -315,7 +369,7 @@ function opensearch_is_search_page() {
  *
  * @param $type
  *   The module implementing the search hook to which the options refer to, or
- *   '-default-,
+ *   '-default-.
  *
  * @return
  *   An array containing the module settings.
@@ -345,15 +399,14 @@ function opensearch_load_settings($type = '-default-') {
  *   The settings array.
  * @param $type
  *   The module implementing the search hook to which the options refer to, or
- *   '-default-',
+ *   '-default-'.
  *
  * @return
  *   An array containing the module settings.
  */
-function opensearch_save_settings($settings = array(), $type = '-default-') {
+function opensearch_save_settings(array $settings = array(), $type = '-default-') {
   $result = db_fetch_object(
-    db_query(
-      "SELECT id, type, settings FROM {opensearch} WHERE type = '%s'",
+    db_query("SELECT id, type, settings FROM {opensearch} WHERE type = '%s'",
       $type
     )
   );
