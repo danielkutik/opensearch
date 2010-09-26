@@ -3,3 +3,4 @@ name = OpenSearch feed
 description = Allows search results to be returned in the OpenSearch RSS format.
 dependencies[] = search
 core = 6.x
+php = 5.x

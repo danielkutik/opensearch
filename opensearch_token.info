@@ -4,3 +4,4 @@ description = Implement search tokens that can be used from third-party modules 
 dependencies[] = search
 dependencies[] = token
 core = 6.x
+php = 5.x

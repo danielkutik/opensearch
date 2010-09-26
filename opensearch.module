@@ -10,7 +10,7 @@
 /**
  * Defines the API version currently implemented by the module.
  */
-define('OPENSEARCH_API', '1.10');
+define('OPENSEARCH_API', '2.0');
 
 /**
  * Implements hook_init().
@@ -61,13 +61,6 @@ function opensearch_init() {
 function opensearch_menu() {
   $search_content = array('search content');
 
-  $items['opensearch/dismiss_warning/%'] = array(
-    'page callback' => 'opensearch_dismiss_warning',
-    'access arguments' => array('administer search'),
-    'type' => MENU_CALLBACK,
-    'file' => 'opensearch.admin.inc',
-  );
-
   $items['opensearch/%opensearch_type'] = array(
     'page callback' => 'opensearch_description',
     'page arguments' => array(1),
@@ -88,45 +81,6 @@ function opensearch_menu() {
 }
 
 /**
- * Implements hook_menu_alter().
- */
-function opensearch_menu_alter(&$items) {
-  $administer_search = array('administer search');
-
-  if (isset($items['admin/settings/search'])) {
-    $items['admin/settings/search/search'] = array(
-      'title' => 'Search',
-      'access arguments' => $administer_search,
-      'weight' => -1,
-      'type' => MENU_DEFAULT_LOCAL_TASK,
-      'file' => 'search.admin.inc',
-      'file path' => drupal_get_path('module', 'search'),
-    );
-
-    $items['admin/settings/search/opensearch'] = array(
-      'title' => 'OpenSearch',
-      'description' => 'Allow search results to be returned in the OpenSearch RSS format.',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('opensearch_admin_settings'),
-      'access arguments' => $administer_search,
-      'type' => MENU_LOCAL_TASK,
-      'file' => 'opensearch.admin.inc',
-      'file path' => drupal_get_path('module', 'opensearch'),
-    );
-
-    $items['admin/settings/search/opensearch/%opensearch_type'] = array(
-      'title' => 'OpenSearch',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('opensearch_admin_type_settings', 4),
-      'access arguments' => $administer_search,
-      'type' => MENU_CALLBACK,
-      'file' => 'opensearch.admin.inc',
-      'file path' => drupal_get_path('module', 'opensearch'),
-    );
-  }
-}
-
-/**
  * Implements hook_theme().
  */
 function opensearch_theme() {
@@ -134,10 +88,6 @@ function opensearch_theme() {
     'opensearch_description' => array(
       'arguments' => array('info' => NULL),
       'template' => 'opensearch-description',
-    ),
-    'opensearch_description_files' => array(
-      'arguments' => array('form' => array()),
-      'file' => 'opensearch.admin.inc',
     ),
   );
 }
@@ -395,7 +345,7 @@ function opensearch_load_settings($type = '-default-') {
  *   The settings array.
  * @param $type
  *   The module implementing the search hook to which the options refer to, or
- *   '-default-,
+ *   '-default-',
  *
  * @return
  *   An array containing the module settings.
