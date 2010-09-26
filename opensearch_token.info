@@ -1,0 +1,6 @@
+; $Id$
+name = OpenSearch tokens
+description = Implement search tokens that can be used from third-party modules or from opensearch.module.
+dependencies[] = search
+dependencies[] = token
+core = 6.x

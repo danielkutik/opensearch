@@ -52,7 +52,7 @@ function opensearch_install() {
  */
 function opensearch_uninstall() {
   drupal_uninstall_schema('opensearch');
-  
+
   variable_del('opensearch_enabled_types');
   variable_del('opensearch_enabled_feeds');
 }
@@ -118,7 +118,7 @@ function opensearch_update_6100() {
 
     db_query(
       "INSERT INTO {opensearch} (type, settings) VALUES ('%s', '%s')",
-      '-default-', serialize($settings))
+      '-default-', serialize($settings)
     );
 
     variable_del('opensearch_adult_content');
@@ -135,6 +135,26 @@ function opensearch_update_6100() {
     'success' => TRUE,
     'query' => 'Updated the module settings',
   );
-
+  
+  $ret[] = array(
+    'success' => TRUE,
+    'query' => 'The settings page has been moved to ' . check_url(url('admin/settings/search/opensearch', array('absolute' => TRUE))),
+  );
+  
+  if (module_exists('token')) {
+    module_enable(array('opensearch_token'));
+  
+    $ret[] = array(
+      'success' => TRUE,
+      'query' => 'Enabled the module opensearch_token.module',
+    );
+  }
+  else {
+    $ret[] = array(
+      'success' => FALSE,
+      'query' => 'The module opensearch_token.module has not been enabled as token.module is not enabled; change the settings that use tokens in ' . check_url(url('admin/settings/search/opensearch', array('absolute' => TRUE))),
+    );
+  }
+  
   return $ret;
 }

@@ -4,11 +4,12 @@
 
 /**
  * @file
- * Admin page callbacks for the opensearch module.
+ * Admin page callbacks for the Opensearch feed module.
  */
 
 /**
- * Admin settings form.
+ * Form builder for the settings form.
+ * @ingroup forms
  */
 function opensearch_admin_settings() {
   $enabled_feeds = variable_get('opensearch_enabled_feeds', NULL);
@@ -19,8 +20,23 @@ function opensearch_admin_settings() {
   );
 
   $options = array();
-  $settings = _opensearch_load_settings();
+  $settings = opensearch_load_settings();
   $standard_value = array();
+
+  if (!variable_get('opensearch_dismiss_tokens_warning', FALSE)) {
+    if (!module_exists('token')) {
+      drupal_set_message(
+        t('The Token module is not enabled; if you use tokens for these settings, they will not be replaced. <a href="@dismiss">Dismiss this warning.</a>', array('@dismiss' => url('opensearch/dismiss_warning'))),
+        'warning'
+      );
+    }
+    elseif (!module_exists('opensearch_token')) {
+      drupal_set_message(
+        t('The Opensearch tokens module is not enabled; by default, the Opensearch feed module settings use tokens defined by that module. <a href="@dismiss">Dismiss this warning.</a>', array('@dismiss' => url('opensearch/dismiss_warning'))),
+        'warning'
+      );
+    }
+  }
 
   $form['description_files'] = array(
     '#type' => 'fieldset',
@@ -29,6 +45,12 @@ function opensearch_admin_settings() {
   );
 
   foreach (module_implements('search') as $module) {
+    // Do not consider modules that don't return a name.
+    $name = module_invoke($module, 'search', 'name');
+    if (empty($name)) {
+      continue;
+    }
+
     $bool = (
       isset($enabled_types) &&
       in_array($module, array_filter($enabled_types)) ||
@@ -38,10 +60,7 @@ function opensearch_admin_settings() {
 
     if ($bool) {
       $form['description_files']['titles'][$module] = array(
-        '#value' => l(
-          module_invoke($module, 'search', 'name'),
-          "opensearch/$module"
-        )
+        '#value' => l($name, "opensearch/$module")
       );
 
       $form['description_files']['operations'][$module] = array(
@@ -50,7 +69,7 @@ function opensearch_admin_settings() {
     }
     else {
       $form['description_files']['titles'][$module] = array(
-        '#value' => module_invoke($module, 'search', 'name')
+        '#value' => $name
       );
 
       $form['description_files']['operations'][$module] = array(
@@ -100,7 +119,8 @@ function opensearch_admin_settings() {
 }
 
 /**
- * Submission function.
+ * Submission handler for opensearch_admin_settings().
+ * @see opensearch_admin_settings()
  */
 function opensearch_admin_settings_reset($form, &$form_state) {
   db_query("DELETE FROM {opensearch} WHERE type = '%s'", $form['#opensearch_type']);
@@ -110,15 +130,21 @@ function opensearch_admin_settings_reset($form, &$form_state) {
     variable_del('opensearch_enabled_types');
   }
 
+  if (!variable_get('menu_need_rebuild', FALSE)) {
+    variable_set('menu_need_rebuild', TRUE);
+  }
+
   drupal_set_message(t('The settings have been reset.'), 'status');
 }
 
 /**
- * Submission function.
+ * Submission handler for opensearch_admin_settings().
+ * @see opensearch_admin_settings()
  */
 function opensearch_admin_settings_submit($form, &$form_state) {
-  if ($form['#opensearch_type'] == '-default-') {
+  $type = $form['#opensearch_type'];
 
+  if ($type == '-default-') {
     variable_set(
       'opensearch_enabled_feeds',
       $form_state['values']['opensearch_enabled_feeds']
@@ -131,20 +157,20 @@ function opensearch_admin_settings_submit($form, &$form_state) {
     unset($form_state['values']['opensearch_enabled_feeds']);
     unset($form_state['values']['opensearch_enabled_types']);
   }
+  else {
+    $form_state['redirect'] = 'admin/settings/search/opensearch';
+  }
 
-  _opensearch_save_settings(
-    $form_state['values'], $form['#opensearch_type']
+  opensearch_save_settings(
+    $form_state['values'], $type
   );
 
   drupal_set_message(t('The settings have been changed.'), 'status');
-
-  if ($form['#opensearch_type'] !== '-default-') {
-    $form_state['redirect'] = 'admin/settings/search/opensearch';
-  }
 }
 
 /**
- * Admin settings form.
+ * Form builder for the search type settings form.
+ * @ingroup forms
  */
 function opensearch_admin_type_settings($form_state, $info) {
   $form = array(
@@ -168,9 +194,13 @@ function opensearch_admin_type_settings($form_state, $info) {
   return $form;
 }
 
+/**
+ * Returns the form fields common to the settings forms.
+ */
 function _opensearch_admin_settings_fields($type = '-default-') {
-  $settings = _opensearch_load_settings($type);
-  
+  $form = array();
+  $settings = opensearch_load_settings($type);
+
   $form['shortname'] = array(
     '#type' => 'textarea',
     '#title' => t('Short name'),
@@ -305,13 +335,35 @@ function _opensearch_admin_settings_fields($type = '-default-') {
     '#description' => t('Prefer raw-text replacements for text to avoid problems with HTML entities.'),
   );
 
+  $tokens = array('global');
+  if (module_exists('opensearch_token')) {
+    $tokens[] = 'search';
+  }
+
   $form['token_help']['help'] = array(
-    '#value' => theme('token_help', 'search'),
+    '#value' => theme('token_help', $tokens),
   );
 
   return $form;
 }
 
+/**
+ * Avoids the warning about tokens.module not being enabled is presented in the
+ * settings page.
+ */
+function opensearch_dismiss_warning() {
+  variable_set('opensearch_dismiss_tokens_warning', FALSE);
+  drupal_goto('admin/settings/search/opensearch');
+}
+
+/**
+ * Renders the list of the enabled Opensearch feeds.
+ *
+ * @param $form
+ *   The form containing the fields to render.
+ *
+ * ingroup themeable
+ */
 function theme_opensearch_description_files($form) {
   $header = array();
   $rows = array();
