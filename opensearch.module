@@ -460,9 +460,8 @@ function opensearch_unique_values($text, $separator = ' ', $max_items = -1) {
   }
 
   if ($max_items > 0) {
-    $unique_values = array_slice($uniq_values, 0, $max_items);
+    $unique_values = array_slice($unique_values, 0, $max_items);
   }
 
   return implode("$separator", $unique_values);
 }
-

@@ -104,6 +104,8 @@ class OpenSearchFeedValidationTestCase extends DrupalWebTestCase {
   function testNodeFeed() {
     $this->drupalLogin($this->account);
 
+    $vars = new OpenSearchVars();
+
     // Create 10 nodes that have 20 words in common.
     $words = $this->randomFakeWords(8, 20);
     for ($i = 0; $i < 10; $i++) {
@@ -117,9 +119,9 @@ class OpenSearchFeedValidationTestCase extends DrupalWebTestCase {
     // Replace this call with $this->cronRun() in the Drupal 7 version.
     search_cron();
 
-    // Enable the Opensearch node feed.
-    variable_set('opensearch_enabled_types', array('node'));
-    variable_set('opensearch_enabled_feeds', array('node'));
+    // Enable the OpenSearch node feed.
+    $vars['opensearch_enabled_types'] = array('node');
+    $vars['opensearch_enabled_feeds'] = array('node');
 
     $keyword = $words[mt_rand(0, 19)];
 
@@ -165,12 +167,14 @@ class OpenSearchFeedValidationTestCase extends DrupalWebTestCase {
       $user = $this->drupalCreateUser();
     }
 
+    $vars = new OpenSearchVars();
+
     // Replace this call with $this->cronRun() in the Drupal 7 version.
     search_cron();
 
-    // Enable the Opensearch node feed.
-    variable_set('opensearch_enabled_types', array('user'));
-    variable_set('opensearch_enabled_feeds', array('user'));
+    // Enable the OpenSearch user feed.
+    $vars['opensearch_enabled_types'] = array('user');
+    $vars['opensearch_enabled_feeds'] = array('user');
 
     $this->drupalGet("opensearch/user");
     if ($this->assertResponse(200, t('The Opensearch description has been retrieved.'))) {

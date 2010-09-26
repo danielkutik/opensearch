@@ -151,4 +151,3 @@ function opensearch_view($info) {
     drupal_not_found();
   }
 }
-
