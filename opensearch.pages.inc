@@ -3,7 +3,7 @@
 
 /**
  * @file
- * Page callback file for the opensearch module.
+ * Page callback file for the OpenSearch feed module.
  */
 
 /**
@@ -151,3 +151,4 @@ function opensearch_view($info) {
     drupal_not_found();
   }
 }
+

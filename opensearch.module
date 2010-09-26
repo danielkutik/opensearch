@@ -465,3 +465,4 @@ function opensearch_unique_values($text, $separator = ' ', $max_items = -1) {
 
   return implode("$separator", $unique_values);
 }
+

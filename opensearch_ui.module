@@ -71,4 +71,3 @@ function opensearch_ui_theme() {
     ),
   );
 }
-
