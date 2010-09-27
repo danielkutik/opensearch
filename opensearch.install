@@ -44,7 +44,11 @@ function opensearch_schema() {
  * Implements hook_install().
  */
 function opensearch_install() {
+  drupal_load('module', 'opensearch');
   drupal_install_schema('opensearch');
+
+  $vars = new OpenSearchVars();
+  $vars->saveDefaults();
 }
 
 /**
@@ -53,11 +57,19 @@ function opensearch_install() {
 function opensearch_update_6200() {
   $ret = array();
 
+  drupal_load('module', 'opensearch');
   module_enable(array('opensearch_ui'));
+
+  $vars = new OpenSearchVars();
+  $vars->saveDefaults();
 
   $ret[] = array(
     'success' => TRUE,
     'query' => 'Enabled the module opensearch_ui.module',
+  );
+  $ret[] = array(
+    'success' => TRUE,
+    'query' => 'Updated the Drupal variables used by the module',
   );
 
   return $ret;
@@ -67,8 +79,9 @@ function opensearch_update_6200() {
  * Implements hook_uninstall().
  */
 function opensearch_uninstall() {
+  drupal_load('module', 'opensearch');
   drupal_uninstall_schema('opensearch');
 
-  variable_del('opensearch_enabled_types');
-  variable_del('opensearch_enabled_feeds');
+  $vars = new OpenSearchVars();
+  $vars->removeDefaults();
 }

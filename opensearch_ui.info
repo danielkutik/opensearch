@@ -1,6 +1,6 @@
 ; $Id$
 name = OpenSearch feed UI
-description = User interface for OpenSearch feed module.
+description = User interface for the OpenSearch feed module.
 dependencies[] = opensearch
 core = 6.x
 php = 5.x
