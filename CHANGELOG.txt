@@ -1,6 +1,11 @@
 # $Id$
 # All the dates reported here are referred to UTC.
 
+2010-09-28
+----------
+#888024 by kiam: Incompatible with custom 404 pages.
+#923664 by kiam: Code is using wrong function names.
+
 2010-07-13
 ----------
 #850454 by morningtime: Don't use startPage.

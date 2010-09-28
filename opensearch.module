@@ -43,40 +43,53 @@ define('OPENSEARCH_API', '2.0');
  * Implements hook_init().
  */
 function opensearch_init() {
-  if ($module = opensearch_is_search_page()) {
-    if ($info = opensearch_type_load($module)) {
-      // If this is a search-related page, add the OpenSearch link for the current
-      // search routine.
-      opensearch_add_opensearch_link($info);
+  $headers = drupal_get_headers();
 
-      $keywords = trim(search_get_keys());
-      if ($keywords) {
-        $result_title = _opensearch_check_plain($info->settings['rss_title'], $module);
+  // Verify the site is not offline, or Drupal is not returning an error page.
+  $bool = (
+    (
+      variable_get('site_offline', 0) &&
+      !user_access('administer site configuration')
+    ) ||
+    preg_match('@HTTP/1\.[01]\x20+403[^a-zA-Z0-9]@', $headers) ||
+    preg_match('@HTTP/1\.[01]\x20+404[^a-zA-Z0-9]@', $headers)
+  );
+  if (!$bool) {
+    if ($module = opensearch_is_search_page()) {
+      if ($info = opensearch_type_load($module)) {
+        // If this is a search-related page, add the OpenSearch link for the current
+        // search routine.
+        opensearch_add_opensearch_link($info);
 
-        $query = array();
-        foreach ($_GET as $index => $value) {
-          if ($index != 'q') {
-            $query[$index] = $value;
+        $keywords = trim(search_get_keys());
+        if ($keywords) {
+          $result_title = opensearch_check_plain($info->settings['rss_title'], $module);
 
-            if ($index == 'page') {
-              $query[$index]++;
+          $query = array();
+          foreach ($_GET as $index => $value) {
+            if ($index != 'q') {
+              $query[$index] = $value;
+
+              if ($index == 'page') {
+                $query[$index]++;
+              }
             }
           }
-        }
 
-        $result_url = url(
-          'opensearch/' . $module . '/' . drupal_urlencode($keywords),
-          array('absolute' => TRUE, 'query' => $query)
-        );
-        drupal_add_feed($result_url, $result_title);
+          $result_url = url(
+            'opensearch/' . $module . '/' . drupal_urlencode($keywords),
+            array('absolute' => TRUE, 'query' => $query)
+          );
+          drupal_add_feed($result_url, $result_title);
+        }
       }
     }
-  }
-  else {
-    // On non-search pages, add links for all available OpenSearches.
-    foreach (module_implements('search') as $module) {
-      if ($info = opensearch_type_load($module)) {
-        opensearch_add_opensearch_link($info);
+    else {
+      // On non-search pages, add links for all available OpenSearches.
+      foreach (module_implements('search') as $module) {
+        if ($info = opensearch_type_load($module)) {
+          opensearch_add_opensearch_link($info);
+        }
       }
     }
   }
@@ -168,14 +181,14 @@ function template_preprocess_opensearch_description(&$variables) {
   $info = $variables['info'];
 
   $variables['adult_content'] = $info->settings['adult_content'];
-  $variables['attribution'] = _opensearch_check_plain($info->settings['attribution'], $info->type, 256);
-  $variables['contact'] = _opensearch_check_plain($info->settings['contact'], $info->type);
-  $variables['description'] = _opensearch_check_plain($info->settings['description'], $info->type, 1024);
-  $variables['longname'] = _opensearch_check_plain($info->settings['longname'], $info->type, 48);
-  $variables['shortname'] = _opensearch_check_plain($info->settings['shortname'], $info->type, 16);
+  $variables['attribution'] = opensearch_check_plain($info->settings['attribution'], $info->type, 256);
+  $variables['contact'] = opensearch_check_plain($info->settings['contact'], $info->type);
+  $variables['description'] = opensearch_check_plain($info->settings['description'], $info->type, 1024);
+  $variables['longname'] = opensearch_check_plain($info->settings['longname'], $info->type, 48);
+  $variables['shortname'] = opensearch_check_plain($info->settings['shortname'], $info->type, 16);
   $variables['syndication_right'] = $info->settings['syndication_right'];
-  $variables['tags'] = _opensearch_unique_values(
-    _opensearch_check_plain($info->settings['tags'], $info->type, 256)
+  $variables['tags'] = opensearch_unique_values(
+    opensearch_check_plain($info->settings['tags'], $info->type, 256)
   );
   $variables['url_opensearch'] = str_replace(
     array('%7B', '%7D', '&'),
@@ -243,7 +256,7 @@ function template_preprocess_opensearch_description(&$variables) {
 function opensearch_add_opensearch_link($info) {
   $link = array(
     'href' => url('opensearch/'. $info->type, array('absolute' => TRUE)),
-    'title' => _opensearch_check_plain($info->settings['longname'], $info->type),
+    'title' => opensearch_check_plain($info->settings['longname'], $info->type),
     'rel' => 'search',
     'type' => 'application/opensearchdescription+xml',
   );

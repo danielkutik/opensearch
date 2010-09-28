@@ -65,8 +65,8 @@ function opensearch_feed($info, $keywords, $results) {
     );
   }
 
-  $description = _opensearch_check_plain($info->settings['rss_description'], $info->type);
-  $title = _opensearch_check_plain($info->settings['rss_title'], $info->type);
+  $description = opensearch_check_plain($info->settings['rss_description'], $info->type);
+  $title = opensearch_check_plain($info->settings['rss_title'], $info->type);
 
   $query = array();
   foreach ($_GET as $index => $value) {
