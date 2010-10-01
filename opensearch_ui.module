@@ -39,7 +39,7 @@ function opensearch_ui_menu_alter(&$items) {
 
     $items['admin/settings/search/opensearch'] = array(
       'title' => 'OpenSearch',
-      'description' => 'Allow search results to be returned in the OpenSearch RSS format.',
+      'description' => 'Allows search results to be returned as OpenSearch RSS.',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('opensearch_ui_admin_settings'),
       'access arguments' => $administer_search,

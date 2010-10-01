@@ -6,3 +6,16 @@
 
 Version 2.0
 ------------
+
+- The function opensearch_check_plain() has been replaced by
+  OpenSearch::checkPlain().
+- The function opensearch_default_settings() has been replaced by
+  OpenSearch::defaultSettings().
+- The function opensearch_is_search_page() has been removed.
+- The function opensearch_load_settings() has been replaced by
+  OpenSearch::loadSettings().
+- The function opensearch_save_settings() has been replaced by
+  OpenSearch::saveSettings().
+- The function opensearch_unique_values() has been replaced by
+  OpenSearch::uniqueValues().
+- The method OpenSearch::getInstance() has been added.

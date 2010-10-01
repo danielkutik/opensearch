@@ -7,19 +7,32 @@
  */
 
 
-final class OpenSearch {
+class OpenSearch implements ArrayAccess {
+  /**
+   * The API version currently implemented by the class.
+   */
   const API_VERSION = '2.0';
 
+  protected $settings = array();
+  protected $type;
+
   /**
-   * Adds a OpenSearch <link> tag in the current page's <head>.
+   * Constructs an OpenSearch object.
    *
-   * @param $info
-   *   A search info object from OpenSearch::getTypeInfo().
+   * @param $type
+   *  The name of the search module.
    */
-  public static function addLink($info) {
+   protected function __construct($type) {
+    $this->type = $type;
+  }
+
+  /**
+   * Adds a OpenSearch link in the HTTP response header for the current page.
+   */
+  public function addLink() {
     $link = array(
-      'href' => url('opensearch/'. $info->type, array('absolute' => TRUE)),
-      'title' => OpenSearch::checkPlain($info->type, $info->settings['longname']),
+      'href' => $this->url('opensearch'),
+      'title' => $this->checkPlain($this->settings['longname']),
       'rel' => 'search',
       'type' => 'application/opensearchdescription+xml',
     );
@@ -53,10 +66,8 @@ final class OpenSearch {
   }
 
   /**
-   * Filters the content of a string used in the OpenSearch descriptor.
+   * Encode special characters in a OpenSearch descriptor string.
    *
-   * @param $type
-   *   The type of the OpenSearch descriptor.
    * @param $string
    *   The string to be filtered.
    * @param $length
@@ -66,12 +77,12 @@ final class OpenSearch {
    * @return
    *  The filtered string.
    */
-  public static function checkPlain($type, $string, $length = 0) {
+  public function checkPlain($string, $length = 0) {
     if (module_exists('token')) {
       $token_objects = array('global' => NULL);
 
       if (module_exists('opensearch_token')) {
-        $token_objects['search'] = $type;
+        $token_objects['search'] = $this->type;
       }
 
       $string = token_replace_multiple($string, $token_objects);
@@ -93,7 +104,7 @@ final class OpenSearch {
   }
 
   /**
-   * Loads the default settings values.
+   * Returns the default settings values.
    *
    * @return
    *   An array of default values.
@@ -101,7 +112,7 @@ final class OpenSearch {
    * @see OpenSearch::loadSettings()
    * @see OpenSearch::saveSettings()
    */
-  function defaultSettings() {
+  protected function defaultSettings() {
     $defaults = array(
       'adult_content' => 0,
       'attribution' => '',
@@ -123,128 +134,285 @@ final class OpenSearch {
   }
 
   /**
-   * Loads the search info object for the search module passed as argument.
+   * Renders an OpenSearch feed.
    *
-   * @param $type
-   *   The search module identifier.
+   * @param $keywords
+   *   The keywords used for the search.
+   * @param $results
+   *  An array containing the search results.
    *
    * @return
-   *   The search info object containing information about the search module.
+   *   The XML content for the Opensearch feed.
    */
-  public static function getTypeInfo($type) {
+  public function feed($keywords, $results = NULL) {
+    global $base_url;
+
+    $items = '';
+    $namespaces = array(
+      'xmlns:atom' => 'http://www.w3.org/2005/Atom',
+      'xmlns:opensearch' => 'http://a9.com/-/spec/opensearch/1.1/',
+      'xmlns:relevance' => 'http://a9.com/-/opensearch/extensions/relevance/1.0/',
+    );
+
+    if (!isset($results)) {
+      $results = module_invoke($this->type, 'search', 'search', $keywords);
+    }
+
+    foreach ($results as $result) {
+      // Merge some default values into the search result to avoid PHP notices.
+      $result += array('snippet' => '');
+
+      // Build the RSS item's properties and attributes.
+      $args = array(array(
+        'key' => 'guid',
+        'value' => $result['link'],
+        'attributes' => array(
+          'isPermaLink' => 'false',
+        ),
+        'relevance:score' => isset($result['score']) ? (float) $result['score'] : NULL,
+      ));
+
+      // Allow third-party modules to alter the RSS items.
+      $data = &$result;
+      $data['__drupal_alter_by_ref'] = array(&$args);
+      drupal_alter('opensearch_rss_item', $data);
+
+      // Format the the search result as an RSS item.
+      $items .= format_rss_item(
+        $result['title'], $result['link'], $result['snippet'], $args
+      );
+    }
+
+    $description = $os->checkPlain($os['rss_description']);
+    $title = $this->checkPlain($this->settings['rss_title']);
+
+    $query = array();
+    foreach ($_GET as $index => $value) {
+      if ($index != 'q') {
+        $query[$index] = $value;
+
+        if ($index == 'page') {
+          $query[$index]++;
+        }
+      }
+    }
+
+    $args = array(
+      'opensearch:totalResults' => isset($GLOBALS['pager_total_items'][0]) ? $GLOBALS['pager_total_items'][0] : 0,
+      'opensearch:startIndex' => isset($GLOBALS['pager_page_array'][0]) ? $GLOBALS['pager_page_array'][0] * 10 + 1 : 1,
+      'opensearch:itemsPerPage' => 10,
+      array(
+        'key' => 'atom:link',
+        'attributes' => array(
+          'rel' => 'self',
+          'href' => $this->url('opensearch', '/' . drupal_urlencode($keywords), array('query' => $query)),
+          'type' => 'application/rss+xml',
+        ),
+      ),
+      array(
+        'key' => 'atom:link',
+        'attributes' => array(
+          'rel' => 'search',
+          'href' => $this->url('opensearch'),
+          'type' => 'application/opensearchdescription+xml',
+        ),
+      ),
+      array(
+        'key' => 'atom:link',
+        'attributes' => array(
+          'rel' => 'alternate',
+          'href' => $this->url('search'),
+          'type' => 'text/html',
+        ),
+      ),
+      array(
+        'key' => 'opensearch:Query',
+        'attributes' => array('role' => 'request', 'searchTerms' => $keywords),
+      ),
+    );
+
+    // Allow third-party modules to alter the RSS channel.
+    $data = &$namespaces;
+    $data['__drupal_alter_by_ref'] = array(&$args);
+    drupal_alter('opensearch_rss_channel', $data);
+
+    $output = array();
+    $output[] = '<?xml version="1.0" encoding="utf-8" ?>';
+    $output[] = '<rss version="2.0"' . drupal_attributes($namespaces) . '>';
+    $output[] = format_rss_channel($title, $base_url, $description, $items, NULL, $args);
+    $output[] = '</rss>';
+
+    drupal_set_header('Content-Type: application/rss+xml; charset=utf-8');
+    print implode("\n", $output);
+  }
+
+  /**
+   * Returns an instance of the class OpenSearch.
+   *
+   * @param $type
+   *   The search module identifier; if the argument is not passed, the search
+   *   identifier will be detected from the current URL.
+   *
+   * @return
+   *   An instance of the class OpenSearch.
+   */
+  public static function getInstance($type = NULL, $settings = NULL) {
     $vars = new OpenSearchVars();
 
-    if (!module_exists($type)) {
-      return FALSE;
-    }
-
-    // Do not consider modules that don't return a name.
-    $name = module_invoke($type, 'search', 'name');
-    if (empty($name)) {
-      return FALSE;
-    }
-
-    // Check if this search type is enabled.
-    $enabled = $vars['opensearch_enabled_types'];
-    $bool = (
-      empty($enabled) ||
-      (isset($enabled) && in_array($type, array_filter($enabled)))
-    );
-    if ($bool) {
-      $info = new stdClass();
-      $info->type = $type;
-      $info->settings = OpenSearch::loadSettings($type);
-
-      $feeds = $vars['opensearch_enabled_feeds'];
-
-      $info->feed = (
-        empty($feeds) ||
-        (isset($feeds) && in_array($type, array_filter($feeds)))
+    if (!isset($type)) {
+      $bool = (
+        (arg(0) == 'search' || arg(0) == 'opensearch') &&
+        ($module = arg(1)) &&
+        module_invoke($module, 'search', 'name')
       );
 
-      return $info;
+      $type = $bool ? $module : '';
+    }
+
+    if (!$type) {
+      return FALSE;
+    }
+
+    if ($type == '-default-') {
+      $c = __CLASS__;
+      $obj = new $c($type);
+      $obj->loadSettings($settings);
+
+      return $obj;
+    }
+    else {
+      if (!module_exists($type)) {
+        return FALSE;
+      }
+
+      // Do not consider modules that don't return a name.
+      $name = module_invoke($type, 'search', 'name');
+      if (empty($name)) {
+        return FALSE;
+      }
+
+      // Check if this search type is enabled.
+      $enabled = $vars['opensearch_enabled_types'];
+      $bool = (
+        empty($enabled) ||
+        (isset($enabled) && in_array($type, array_filter($enabled)))
+      );
+      if ($bool) {
+        $c = __CLASS__;
+        $obj = new $c($type);
+        $obj->loadSettings($settings);
+
+        return $obj;
+      }
     }
 
     return FALSE;
   }
 
   /**
-   * Checks if the current page is a front-end search page.
+   * Loads the search module settings.
    *
-   * This should also match any search results pages as well.
-   *
-   * @return
-   *   The module responsible for the current search routine, or an empty
-   *   string if the current page is not a search page.
+   * @param $settings
+   *   The array containing the settings; if it's not passed, the settings will
+   *   be loaded from the database.
    */
-  public static function isSearchPage() {
-    $bool = (
-      (arg(0) == 'search' || arg(0) == 'opensearch') &&
-      ($module = arg(1)) &&
-      module_invoke($module, 'search', 'name')
-    );
+  public function loadSettings($settings = NULL) {
+    $this->settings = array();
 
-    return $bool ? $module : '';
+    if (isset($settings)) {
+      $this->settings = $settings;
+    }
+    else {
+      $row = db_fetch_object(
+        db_query_range(
+          "SELECT settings FROM {opensearch} WHERE type = '%s'", $this->type, 0, 1
+        )
+      );
+      if ($row) {
+        $this->settings = empty($row->settings) ? array() : unserialize($row->settings);
+      }
+    }
+
+    $this->settings += $this->defaultSettings();
+
+    if ($this->type != '-default-') {
+      $vars = new OpenSearchVars();
+
+      $enabled = $vars['opensearch_enabled_types'];
+      $bool = (
+        empty($enabled) ||
+        (isset($enabled) && in_array($this->type, array_filter($enabled)))
+      );
+      $this->settings['enabled'] = $bool;
+
+      $enabled = $vars['opensearch_enabled_feeds'];
+      $bool = (
+        empty($enabled) ||
+        (isset($enabled) && in_array($this->type, array_filter($enabled)))
+      );
+      $this->settings['feed'] = $bool;
+    }
   }
 
   /**
-   * Loads the module settings.
-   *
-   * @param $type
-   *   The module implementing the search hook to which the options refer to,
-   *   or '-default-'.
-   *
-   * @return
-   *   An array containing the module settings.
+   * Implements ArrayAccess::offsetExists().
    */
-  public static function loadSettings($type = '-default-') {
-    $row = db_fetch_object(
-      db_query_range(
-        "SELECT settings FROM {opensearch} WHERE type = '%s'", $type, 0, 1
-      )
-    );
-    $settings = array();
+  public function offsetExists($offset) {
+    $value = $this->settings[$offset];
 
-    if ($row) {
-      $settings = empty($row->settings) ? array() : unserialize($row->settings);
+    return isset($value);
+  }
 
+  /**
+   * Implements ArrayAccess::offsetGet().
+   */
+  public function offsetGet($offset) {
+    return $this->settings[$offset];
+  }
+
+  /**
+   * Implements ArrayAccess::offsetSet().
+   */
+  public function offsetSet($offset, $value) {
+    if (!empty($offset)) {
+      $this->settings[$offset] = $value;
     }
+  }
 
-    $settings += self::defaultSettings();
-
-    return $settings;
+  /**
+   * Implements ArrayAccess::offsetUnset().
+   */
+  public function offsetUnset($offset) {
+    unset($this->settings[$offset]);
   }
 
   /**
    * Saves the module settings.
-   *
-   * @param $settings
-   *   The settings array.
-   * @param $type
-   *   The module implementing the search hook to which the options refer to, or
-   *   '-default-'.
-   *
-   * @return
-   *   An array containing the module settings.
    */
-  function saveSettings(array $settings = array(), $type = '-default-') {
+  public function saveSettings() {
     $result = db_fetch_object(
       db_query("SELECT id, type, settings FROM {opensearch} WHERE type = '%s'",
-        $type
+        $this->type
       )
     );
 
     if ($result === FALSE) {
       $row = new stdClass();
-      $row->type = $type;
+      $row->type = $this->type;
     }
     else {
       $row = $result;
     }
 
-    $row->settings = $settings;
+    $row->settings = $this->settings;
 
     drupal_write_record('opensearch', $row, $result === FALSE ? array() : 'id');
+  }
+
+  /**
+   * Returns the identifier for the module implementing the search hook
+  public function type() {
+    return $this->type;
   }
 
   /**
@@ -264,7 +432,7 @@ final class OpenSearch {
    * @return
    *   A string containing only unique items.
    */
-  function uniqueValues($text, $separator = ' ', $max_items = -1) {
+  public static function uniqueValues($text, $separator = ' ', $max_items = -1) {
     $lc_values = array();
     $unique_values = array();
 
@@ -286,6 +454,35 @@ final class OpenSearch {
     }
 
     return implode($separator, $unique_values);
+  }
+
+  /**
+   * Generates an absolute OpenSearch URL.
+   *
+   * @param $prefix
+   *   The prefix to add in the URL.
+   * @param $suffix
+   *   The suffix to add in the URL.
+   *
+   * @return
+   *   A string containing the absolute URL.
+   */
+  public function url($prefix, $suffix = '', $options = array()) {
+    $options += array('absolute' => TRUE);
+
+    return url($prefix . '/' . $this->type . $suffix, $options);
+  }
+
+  /**
+   * Log a system message for the OpenSearch feed module.
+   *
+   * @param $keywords
+   *   The keywords used for the search.
+   */
+  public function watchdog($keywords) {
+    watchdog(
+      'opensearch', '%keys (@type).', array('%keys' => $keywords, '@type' => module_invoke($this->type, 'search', 'name')), WATCHDOG_NOTICE, l(t('results'), 'search/' . $this->type . '/' . $keywords)
+    );
   }
 }
 
@@ -332,40 +529,38 @@ function opensearch_init() {
     preg_match('@HTTP/1\.[01]\x20+404[^a-zA-Z0-9]@', $headers)
   );
   if (!$bool) {
-    if ($module = OpenSearch::isSearchPage()) {
-      if ($info = OpenSearch::getTypeInfo($module)) {
-        // If this is a search-related page, add the OpenSearch link for the current
-        // search routine.
-        OpenSearch::addLink($info);
+    if ($os = OpenSearch::getInstance()) {
+      // If this is a search-related page, add the OpenSearch link for the current
+      // search routine.
+      $os->addLink();
 
-        $keywords = trim(search_get_keys());
-        if ($keywords) {
-          $result_title = OpenSearch::checkPlain($module, $info->settings['rss_title']);
+      $keywords = trim(search_get_keys());
+      if ($keywords) {
+        $result_title = $os->checkPlain($info->settings['rss_title']);
 
-          $query = array();
-          foreach ($_GET as $index => $value) {
-            if ($index != 'q') {
-              $query[$index] = $value;
+        $query = array();
+        foreach ($_GET as $index => $value) {
+          if ($index != 'q') {
+            $query[$index] = $value;
 
-              if ($index == 'page') {
-                $query[$index]++;
-              }
+            if ($index == 'page') {
+              $query[$index]++;
             }
           }
-
-          $result_url = url(
-            'opensearch/' . $module . '/' . drupal_urlencode($keywords),
-            array('absolute' => TRUE, 'query' => $query)
-          );
-          drupal_add_feed($result_url, $result_title);
         }
+
+        $result_url = url(
+          'opensearch/' . $module . '/' . drupal_urlencode($keywords),
+          array('absolute' => TRUE, 'query' => $query)
+        );
+        drupal_add_feed($result_url, $result_title);
       }
     }
     else {
       // On non-search pages, add links for all available OpenSearches.
       foreach (module_implements('search') as $module) {
-        if ($info = OpenSearch::getTypeInfo($module)) {
-          OpenSearch::addLink($info);
+        if ($os = OpenSearch::getInstance($module)) {
+          $os->addLink();
         }
       }
     }
@@ -403,7 +598,7 @@ function opensearch_menu() {
 function opensearch_theme() {
   return array(
     'opensearch_description' => array(
-      'arguments' => array('info' => NULL),
+      'arguments' => array('opensearch' => NULL),
       'template' => 'opensearch-description',
     ),
   );
@@ -413,7 +608,7 @@ function opensearch_theme() {
  * Menu object load function.
  */
 function opensearch_type_load($type) {
-  return OpenSearch::getTypeInfo($type);
+  return OpenSearch::getInstance($type);
 }
 
 /**
@@ -422,47 +617,40 @@ function opensearch_type_load($type) {
 function template_preprocess_opensearch_description(&$variables) {
   global $base_path;
 
-  $info = $variables['info'];
+  $os = $variables['opensearch'];
 
-  $variables['adult_content'] = $info->settings['adult_content'];
-  $variables['attribution'] = OpenSearch::checkPlain($info->type, $info->settings['attribution'], 256);
-  $variables['contact'] = OpenSearch::checkPlain($info->type, $info->settings['contact']);
-  $variables['description'] = OpenSearch::checkPlain($info->type, $info->settings['description'], 1024);
-  $variables['longname'] = OpenSearch::checkPlain($info->type, $info->settings['longname'], 48);
-  $variables['shortname'] = OpenSearch::checkPlain($info->type, $info->settings['shortname'], 16);
-  $variables['syndication_right'] = $info->settings['syndication_right'];
-  $variables['tags'] = OpenSearch::uniqueValues(
-    OpenSearch::checkPlain($info->type, $info->settings['tags'], 256)
+  $variables['adult_content'] = $os['adult_content'];
+  $variables['attribution'] = $os->checkPlain($os['attribution'], 256);
+  $variables['contact'] = $os->checkPlain($os['contact']);
+  $variables['description'] = $os->checkPlain($os['description'], 1024);
+  $variables['longname'] = $os->checkPlain($os['longname'], 48);
+  $variables['shortname'] = $os->checkPlain($os['shortname'], 16);
+  $variables['syndication_right'] = $os['syndication_right'];
+  $variables['tags'] = $os->uniqueValues(
+    $os->checkPlain($os['tags'], 256)
   );
   $variables['url_opensearch'] = str_replace(
     array('%7B', '%7D', '&'),
     array('{', '}', '&amp;'),
-    url('opensearch/' . $info->type . '/{searchTerms}', array('absolute' => TRUE))
+    $os->url('opensearch', '/{searchTerms}')
   );
   $variables['url_search'] = str_replace(
     array('%7B', '%7D', '&'),
     array('{', '}', '&amp;'),
-    url('search/' . $info->type . '/{searchTerms}', array('absolute' => TRUE))
+    $os->url('search', '/{searchTerms}')
   );
-  $variables['url_self'] = url('opensearch/' . $info->type, array('absolute' => TRUE));
+  $variables['url_self'] = $os->url('opensearch');
 
   $languages = language_list('enabled');
   $variables['languages'] = $languages[1];
 
-  $bool = (
-    $info->settings['image_type'] == 'theme' ||
-    (
-      $info->settings['image_type'] == 'theme' &&
-      empty($info->settings['image_custom'])
-    )
-  );
-
+-
   if ($bool) {
     init_theme();
     $image_path = theme_get_setting('favicon');
   }
   else {
-    $image_path = $info->settings['image_custom'];
+    $image_path = $os['image_custom'];
   }
 
   if (isset($image_path)) {
