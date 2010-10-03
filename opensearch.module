@@ -644,7 +644,6 @@ function template_preprocess_opensearch_description(&$variables) {
   $languages = language_list('enabled');
   $variables['languages'] = $languages[1];
 
--
   if ($bool) {
     init_theme();
     $image_path = theme_get_setting('favicon');
