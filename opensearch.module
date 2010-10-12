@@ -29,7 +29,7 @@ class OpenSearch implements ArrayAccess {
   /**
    * Adds a OpenSearch link in the HTTP response header for the current page.
    */
-  public function addLink() {
+  function addLink() {
     $link = array(
       'href' => $this->url('opensearch'),
       'title' => $this->checkPlain($this->settings['longname']),
@@ -77,7 +77,7 @@ class OpenSearch implements ArrayAccess {
    * @return
    *  The filtered string.
    */
-  public function checkPlain($string, $length = 0) {
+  function checkPlain($string, $length = 0) {
     if (module_exists('token')) {
       $token_objects = array('global' => NULL);
 
@@ -144,7 +144,7 @@ class OpenSearch implements ArrayAccess {
    * @return
    *   The XML content for the Opensearch feed.
    */
-  public function feed($keywords, $results = NULL) {
+  function feed($keywords, $results = NULL) {
     global $base_url;
 
     $items = '';
@@ -316,7 +316,7 @@ class OpenSearch implements ArrayAccess {
    *   The array containing the settings; if it's not passed, the settings will
    *   be loaded from the database.
    */
-  public function loadSettings($settings = NULL) {
+  function loadSettings($settings = NULL) {
     $this->settings = array();
 
     if (isset($settings)) {
@@ -357,7 +357,7 @@ class OpenSearch implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetExists().
    */
-  public function offsetExists($offset) {
+  function offsetExists($offset) {
     $value = $this->settings[$offset];
 
     return isset($value);
@@ -366,14 +366,14 @@ class OpenSearch implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetGet().
    */
-  public function offsetGet($offset) {
+  function offsetGet($offset) {
     return $this->settings[$offset];
   }
 
   /**
    * Implements ArrayAccess::offsetSet().
    */
-  public function offsetSet($offset, $value) {
+  function offsetSet($offset, $value) {
     if (!empty($offset)) {
       $this->settings[$offset] = $value;
     }
@@ -382,14 +382,14 @@ class OpenSearch implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetUnset().
    */
-  public function offsetUnset($offset) {
+  function offsetUnset($offset) {
     unset($this->settings[$offset]);
   }
 
   /**
    * Saves the module settings.
    */
-  public function saveSettings() {
+  function saveSettings() {
     $result = db_fetch_object(
       db_query("SELECT id, type, settings FROM {opensearch} WHERE type = '%s'",
         $this->type
@@ -411,7 +411,7 @@ class OpenSearch implements ArrayAccess {
 
   /**
    * Returns the identifier for the module implementing the search hook
-  public function type() {
+  function type() {
     return $this->type;
   }
 
@@ -467,7 +467,7 @@ class OpenSearch implements ArrayAccess {
    * @return
    *   A string containing the absolute URL.
    */
-  public function url($prefix, $suffix = '', $options = array()) {
+  function url($prefix, $suffix = '', $options = array()) {
     $options += array('absolute' => TRUE);
 
     return url($prefix . '/' . $this->type . $suffix, $options);
@@ -479,7 +479,7 @@ class OpenSearch implements ArrayAccess {
    * @param $keywords
    *   The keywords used for the search.
    */
-  public function watchdog($keywords) {
+  function watchdog($keywords) {
     watchdog(
       'opensearch', '%keys (@type).', array('%keys' => $keywords, '@type' => module_invoke($this->type, 'search', 'name')), WATCHDOG_NOTICE, l(t('results'), 'search/' . $this->type . '/' . $keywords)
     );
@@ -493,7 +493,7 @@ class OpenSearchVars extends Vars {
   /**
    * Constructs a OpenSearchVars object.
    */
-  public function __construct() {
+  function __construct() {
    parent::__construct('opensearch', array(
      'sysVars' => array(
        'menu_rebuild_needed' => FALSE,
