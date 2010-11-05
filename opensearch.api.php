@@ -12,6 +12,15 @@
  */
 
 /**
+ * Allows other modules to change the default settings used by the module.
+ *
+ * @param $defaults
+ *   The array containing the default module settings.
+ */
+ function hook_opensearch_default_settings_alter(&$defaults) {
+ }
+
+/**
  * Allows other modules to change the OpenSearch RSS item.
  *
  * @param $result
@@ -32,15 +41,6 @@
  *   The sixth argument passed to @code format_rss_item() @endcode.
  */
  function hook_opensearch_rss_channel_alter(&$namespaces, &$args) {
- }
-
-/**
- * Allows other modules to change the default settings used by the module.
- *
- * @param $defaults
- *   The array containing the default module settings.
- */
- function hook_opensearch_default_settings_alter(&$defaults) {
  }
 
 /**
