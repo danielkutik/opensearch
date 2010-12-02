@@ -494,11 +494,7 @@ class OpenSearchVars extends Vars {
    * Constructs a OpenSearchVars object.
    */
   function __construct() {
-   parent::__construct('opensearch', array(
-     'sysVars' => array(
-       'menu_rebuild_needed' => FALSE,
-     )
-   ));
+   parent::__construct('opensearch');
   }
 
   /**
