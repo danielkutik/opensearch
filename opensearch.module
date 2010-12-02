@@ -27,6 +27,33 @@ class OpenSearch implements ArrayAccess {
   }
 
   /**
+   * Adds the feed link.
+   */
+  function addFeed() {
+    $keywords = trim(search_get_keys());
+    if ($keywords) {
+      $result_title = $this->checkPlain($this->settings['rss_title']);
+
+      $query = array();
+      foreach ($_GET as $index => $value) {
+        if ($index != 'q') {
+          $query[$index] = $value;
+
+          if ($index == 'page') {
+            $query[$index]++;
+          }
+        }
+      }
+
+      $result_url = $this->url(
+        'opensearch', '/' . drupal_urlencode($keywords),
+        array('absolute' => TRUE, 'query' => $query)
+      );
+      drupal_add_feed($result_url, $result_title);
+    }
+  }
+  
+  /**
    * Adds a OpenSearch link in the HTTP response header for the current page.
    */
   function addLink() {
@@ -183,7 +210,7 @@ class OpenSearch implements ArrayAccess {
       );
     }
 
-    $description = $os->checkPlain($os['rss_description']);
+    $description = $this->checkPlain($this->settings['rss_description']);
     $title = $this->checkPlain($this->settings['rss_title']);
 
     $query = array();
@@ -410,7 +437,8 @@ class OpenSearch implements ArrayAccess {
   }
 
   /**
-   * Returns the identifier for the module implementing the search hook
+   * Returns the identifier for the module implementing the search hook.
+   */
   function type() {
     return $this->type;
   }
@@ -467,7 +495,7 @@ class OpenSearch implements ArrayAccess {
    * @return
    *   A string containing the absolute URL.
    */
-  function url($prefix, $suffix = '', $options = array()) {
+  function url($prefix, $suffix = '', array $options = array()) {
     $options += array('absolute' => TRUE);
 
     return url($prefix . '/' . $this->type . $suffix, $options);
@@ -514,11 +542,12 @@ class OpenSearchVars extends Vars {
  */
 function opensearch_init() {
   $headers = drupal_get_headers();
+  $vars = new OpenSearchVars();
 
   // Verify the site is not offline, or Drupal is not returning an error page.
   $bool = (
     (
-      variable_get('site_offline', 0) &&
+      $vars['site_offline'] &&
       !user_access('administer site configuration')
     ) ||
     preg_match('@HTTP/1\.[01]\x20+403[^a-zA-Z0-9]@', $headers) ||
@@ -529,28 +558,7 @@ function opensearch_init() {
       // If this is a search-related page, add the OpenSearch link for the current
       // search routine.
       $os->addLink();
-
-      $keywords = trim(search_get_keys());
-      if ($keywords) {
-        $result_title = $os->checkPlain($info->settings['rss_title']);
-
-        $query = array();
-        foreach ($_GET as $index => $value) {
-          if ($index != 'q') {
-            $query[$index] = $value;
-
-            if ($index == 'page') {
-              $query[$index]++;
-            }
-          }
-        }
-
-        $result_url = url(
-          'opensearch/' . $module . '/' . drupal_urlencode($keywords),
-          array('absolute' => TRUE, 'query' => $query)
-        );
-        drupal_add_feed($result_url, $result_title);
-      }
+      $os->addFeed();
     }
     else {
       // On non-search pages, add links for all available OpenSearches.
