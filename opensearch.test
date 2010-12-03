@@ -15,18 +15,19 @@ class OpenSearchTokensTestCase extends DrupalWebTestCase {
   }
 
   function testSearchTokens() {
+    $info = search_get_info();
     $modules = array('node', 'user');
 
     foreach ($modules as $module) {
       $expected = array();
-      $test = '[search-module] [search-name] [search-name-lowercase] [search-opensearch-url] [search-url] [search-url-relative]';
+      $test = '[search:module] [search:name] [search:name-lowercase] [search:opensearch-url] [search:url] [search:url-relative]';
 
       $expected[] = $module;
-      $expected[] = module_invoke($module, 'search', 'name');
-      $expected[] = drupal_strtolower(module_invoke($module, 'search', 'name'));
-      $expected[] = url("opensearch/$module", array('absolute' => TRUE));
-      $expected[] = url("search/$module", array('absolute' => TRUE));
-      $expected[] = "search/$module";
+      $expected[] = $info[$module]['title'];
+      $expected[] = drupal_strtolower($info[$module]['title']);
+      $expected[] = url('opensearch/' . $info[$module]['path']);
+      $expected[] = url('search/' . $info[$module]['path'], array('absolute' => TRUE));
+      $expected[] = url('search/' . $info[$module]['path']);
 
       $expected = implode(' ', $expected);
 
