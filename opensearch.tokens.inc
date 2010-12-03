@@ -62,7 +62,7 @@ function opensearch_token_info() {
  * Implements hook_tokens().
  */
 function opensearch_tokens($type, $tokens, array $data = array(), array $options = array()) {
-  $default_info = search_get_default_module_info();
+  $info = search_get_info();
   $replacements = array();
   $sanitize = !empty($options['sanitize']);
   $url_options = array();
@@ -72,45 +72,42 @@ function opensearch_tokens($type, $tokens, array $data = array(), array $options
   }
 
 
-  if ($default_info && $type == 'search' && !empty($data['search'])) {
-    $info = search_get_info();
+  if ($type == 'search' && !empty($data['search']) && isset($info[$data['search']])) {
     $search = $data['search'];
 
-    if (isset($info[$search])) {
-      foreach ($tokens as $name => $original) {
-        switch ($name) {
-          case 'keywords':
-            $replacements[$original] = $sanitize ? check_plain(trim(search_get_keys())) : trim(search_get_keys());
-            break;
+    foreach ($tokens as $name => $original) {
+      switch ($name) {
+        case 'keywords':
+          $replacements[$original] = $sanitize ? check_plain(trim(search_get_keys())) : trim(search_get_keys());
+          break;
 
-          case 'module':
-            $replacements[$original] = $search;
-            break;
+        case 'module':
+          $replacements[$original] = $search;
+          break;
 
-          case 'module-full':
-            $replacements[$original] = "$search.module";
-            break;
+        case 'module-full':
+          $replacements[$original] = "$search.module";
+          break;
 
-          case 'name':
-            $replacements[$original] = $info[$search]['title'];
-            break;
+        case 'name':
+          $replacements[$original] = $info[$search]['title'];
+          break;
 
-          case 'name-lowercase':
-            $replacements[$original] = drupal_strtolower($info[$search]['title']);
-            break;
+        case 'name-lowercase':
+          $replacements[$original] = drupal_strtolower($info[$search]['title']);
+          break;
 
-          case 'opensearch-url':
-            $replacements[$original] = url('opensearch/' . $info[$search]['path'], $url_options);
-            break;
+        case 'opensearch-url':
+          $replacements[$original] = url('opensearch/' . $info[$search]['path'], $url_options);
+          break;
 
-          case 'url':
-            $replacements[$original] = url('search/' . $info[$search]['path'], $url_options + array('absolute' => TRUE));
-            break;
+        case 'url':
+          $replacements[$original] = url('search/' . $info[$search]['path'], $url_options + array('absolute' => TRUE));
+          break;
 
-          case 'url-relative':
-            $replacements[$original] = url('search/' . $info[$search]['path'], $url_options);
-            break;
-        }
+        case 'url-relative':
+          $replacements[$original] = url('search/' . $info[$search]['path'], $url_options);
+          break;
       }
     }
   }

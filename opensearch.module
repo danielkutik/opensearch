@@ -31,8 +31,10 @@ class OpenSearch implements ArrayAccess {
    */
   function addFeed() {
     $keywords = trim(search_get_keys());
+    $stored_feed_links = &Vars::staticValue('drupal_add_feed', array());
+
     if ($keywords) {
-      $result_title = $this->checkPlain($this->settings['rss_title']);
+      $rss_title = $this->checkPlain($this->settings['rss_title']);
 
       $query = array();
       foreach ($_GET as $index => $value) {
@@ -45,11 +47,19 @@ class OpenSearch implements ArrayAccess {
         }
       }
 
-      $result_url = $this->url(
+      $rss_url = $this->url(
         'opensearch', '/' . drupal_urlencode($keywords),
-        array('absolute' => TRUE, 'query' => $query)
+        array('query' => $query)
       );
-      drupal_add_feed($result_url, $result_title);
+
+      $stored_feed_links[$rss_url] = theme('feed_icon', array('url' => $rss_url, 'title' => $rss_title));
+
+      drupal_add_html_head_link(array(
+        'rel' => 'alternate',
+        'type' => 'application/rss+xml',
+        'title' => $rss_title,
+        'href' => $rss_url,
+      ));
     }
   }
 
@@ -64,7 +74,7 @@ class OpenSearch implements ArrayAccess {
       'type' => 'application/opensearchdescription+xml',
     );
 
-    drupal_add_link($link);
+    drupal_add_html_head_link($link);
   }
 
   /**
@@ -105,20 +115,11 @@ class OpenSearch implements ArrayAccess {
    *  The filtered string.
    */
   function checkPlain($string, $length = 0) {
-    if (module_exists('token')) {
-      $token_objects = array('global' => NULL);
-
-      if (module_exists('opensearch_token')) {
-        $token_objects['search'] = $this->type;
-      }
-
-      $string = token_replace_multiple($string, $token_objects);
-    }
 
     $result = check_plain(
       strip_tags(
         decode_entities(
-          preg_replace('/(\r\n?|\n)/', '', $string)
+          preg_replace('/(\r\n?|\n)/', '', token_replace($string, array('search' => $this->type)))
         )
       )
     );
@@ -412,8 +413,8 @@ class OpenSearch implements ArrayAccess {
    */
   function saveSettings() {
     $result = db_query_range("SELECT id, type, settings FROM {opensearch} WHERE type = :type",
-        0, 1, array(':type' => $this->type)
-      )->fetchObject();
+      0, 1, array(':type' => $this->type)
+    )->fetchObject();
 
     if ($result === FALSE) {
       $row = new stdClass();
@@ -672,7 +673,6 @@ function template_preprocess_opensearch_description(&$variables) {
     if (!empty($image_path)) {
       $attrs = array();
       $image_attributes = @getimagesize($image_path);
-      $url_options = array('absolute' => TRUE);
 
       if (!empty($image_attributes[0])) {
         $attrs['width'] = $image_attributes[0];
