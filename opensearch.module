@@ -200,9 +200,7 @@ class OpenSearch implements ArrayAccess {
       ));
 
       // Allow third-party modules to alter the RSS items.
-      $data = &$result;
-      $data['__drupal_alter_by_ref'] = array(&$args);
-      drupal_alter('opensearch_rss_item', $data);
+      drupal_alter('opensearch_rss_item', $result, $args);
 
       // Format the the search result as an RSS item.
       $items .= format_rss_item(
@@ -259,9 +257,7 @@ class OpenSearch implements ArrayAccess {
     );
 
     // Allow third-party modules to alter the RSS channel.
-    $data = &$namespaces;
-    $data['__drupal_alter_by_ref'] = array(&$args);
-    drupal_alter('opensearch_rss_channel', $data);
+    drupal_alter('opensearch_rss_channel', $namespace, $args);
 
     $output = array();
     $output[] = '<?xml version="1.0" encoding="utf-8" ?>';
