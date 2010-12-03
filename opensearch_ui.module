@@ -11,6 +11,25 @@
  * Implements hook_menu().
  */
 function opensearch_ui_menu() {
+  $items = array();
+
+  $items['admin/config/opensearch/settings'] = array(
+    'title' => 'OpenSearch settings',
+    'description' => 'Allows search results to be returned as OpenSearch RSS.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('opensearch_ui_admin_settings'),
+    'access arguments' => array('administer search'),
+    'weight' => -11,
+    'file' => 'opensearch.admin.inc',
+  );
+  $items['admin/config/opensearch/settings/%opensearch_type'] = array(
+    'title' => 'OpenSearch settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('opensearch_ui_admin_type_settings', 4),
+    'access arguments' => array('administer search'),
+    'type' => MENU_CALLBACK,
+    'file' => 'opensearch_ui.admin.inc',
+  );
   $items['opensearch/dismiss_warning/%'] = array(
     'page callback' => 'opensearch_ui_dismiss_warning',
     'access arguments' => array('administer search'),
@@ -22,51 +41,12 @@ function opensearch_ui_menu() {
 }
 
 /**
- * Implements hook_menu_alter().
- */
-function opensearch_ui_menu_alter(&$items) {
-  $administer_search = array('administer search');
-
-  if (isset($items['admin/settings/search'])) {
-    $items['admin/settings/search/search'] = array(
-      'title' => 'Search',
-      'access arguments' => $administer_search,
-      'weight' => -1,
-      'type' => MENU_DEFAULT_LOCAL_TASK,
-      'file' => 'search.admin.inc',
-      'file path' => drupal_get_path('module', 'search'),
-    );
-
-    $items['admin/settings/search/opensearch'] = array(
-      'title' => 'OpenSearch',
-      'description' => 'Allows search results to be returned as OpenSearch RSS.',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('opensearch_ui_admin_settings'),
-      'access arguments' => $administer_search,
-      'type' => MENU_LOCAL_TASK,
-      'file' => 'opensearch_ui.admin.inc',
-      'file path' => drupal_get_path('module', 'opensearch'),
-    );
-
-    $items['admin/settings/search/opensearch/%opensearch_type'] = array(
-      'title' => 'OpenSearch',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('opensearch_ui_admin_type_settings', 4),
-      'access arguments' => $administer_search,
-      'type' => MENU_CALLBACK,
-      'file' => 'opensearch_ui.admin.inc',
-      'file path' => drupal_get_path('module', 'opensearch'),
-    );
-  }
-}
-
-/**
  * Implements hook_theme().
  */
 function opensearch_ui_theme() {
   return array(
     'opensearch_ui_description_files' => array(
-      'arguments' => array('form' => array()),
+      'render element' => 'form',
       'file' => 'opensearch_ui.admin.inc',
     ),
   );

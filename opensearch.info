@@ -1,6 +1,11 @@
 ; $Id$
 name = OpenSearch feed
 description = Allows search results to be returned in the OpenSearch RSS format.
+core = 7.x
 dependencies[] = search
-core = 6.x
-php = 5.x
+dependencies[] = vars (2.x)
+files[] = opensearch.install
+files[] = opensearch.module
+files[] = opensearch.pages.inc
+files[] = opensearch.tokens.inc
+files[] = opensearch.test

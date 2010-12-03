@@ -11,7 +11,7 @@ class OpenSearchTokensTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('search', 'token', 'opensearch', 'opensearch_token');
+    parent::setUp('search', 'opensearch');
   }
 
   function testSearchTokens() {
@@ -30,7 +30,7 @@ class OpenSearchTokensTestCase extends DrupalWebTestCase {
 
       $expected = implode(' ', $expected);
 
-      $result = token_replace($test, 'search', $module);
+      $result = token_replace($test, array('search' => $module));
 
       $this->assertEqual($result, $expected, t('Search tokens for %module are correct.', array('%module' => $module)));
     }
@@ -169,8 +169,7 @@ class OpenSearchFeedValidationTestCase extends DrupalWebTestCase {
 
     $vars = new OpenSearchVars();
 
-    // Replace this call with $this->cronRun() in the Drupal 7 version.
-    search_cron();
+    $this->cronRun();
 
     // Enable the OpenSearch user feed.
     $vars['opensearch_enabled_types'] = array('user');

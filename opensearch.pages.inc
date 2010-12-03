@@ -19,7 +19,7 @@ function opensearch_description($os) {
   // application/opensearchdescription+xml is not standard.
   drupal_set_header('Content-Type: application/xml; charset=utf-8');
 
-  print theme('opensearch_description', $os);
+  print theme('opensearch_description', array('opensearch' => $os));
 }
 
 /**

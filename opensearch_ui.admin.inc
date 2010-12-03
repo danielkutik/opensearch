@@ -28,21 +28,6 @@ function opensearch_ui_admin_settings() {
   $options = array();
   $standard_value = array();
 
-  if (!$vars['opensearch_dismiss_tokens_warning']) {
-    if (!module_exists('token')) {
-      drupal_set_message(
-        t('The Token module is not enabled; if you use tokens for these settings, they will not be replaced. <a href="@dismiss">Dismiss this warning.</a>', array('@dismiss' => url('opensearch/dismiss_warning'))),
-        'warning'
-      );
-    }
-    elseif (!module_exists('opensearch_token')) {
-      drupal_set_message(
-        t('The Opensearch tokens module is not enabled; by default, the Opensearch feed module settings use tokens defined by that module. <a href="@dismiss">Dismiss this warning.</a>', array('@dismiss' => url('opensearch/dismiss_warning'))),
-        'warning'
-      );
-    }
-  }
-
   $form['description_files'] = array(
     '#type' => 'fieldset',
     '#title' => t('Description files'),
@@ -65,11 +50,15 @@ function opensearch_ui_admin_settings() {
 
     if ($bool) {
       $form['description_files']['titles'][$module] = array(
-        '#value' => l($name, "opensearch/$module")
+        '#type' => 'link',
+        '#title' => $name,
+        '#href' => "opensearch/$module",
       );
 
       $form['description_files']['operations'][$module] = array(
-        '#value' => l(t('edit settings'), "admin/settings/search/opensearch/$module")
+        '#type' => 'link',
+        '#title' => t('edit settings'),
+        '#href' => "admin/settings/search/opensearch/$module",
       );
     }
     else {
@@ -129,16 +118,16 @@ function opensearch_ui_admin_settings() {
 function opensearch_ui_admin_settings_reset($form, &$form_state) {
   $vars = new OpenSearchVars();
 
-  db_query("DELETE FROM {opensearch} WHERE type = '%s'", $form['#opensearch_type']);
+  db_delete('opensearch')
+    ->condition('type', $form['#opensearch_type'])
+    ->execute();
 
   if ($form['#opensearch_type'] == '-default-') {
     unset($vars['opensearch_enabled_feeds']);
     unset($vars['opensearch_enabled_types']);
   }
 
-  if (!$vars['menu_need_rebuild']) {
-    $vars['menu_need_rebuild'] = TRUE;
-  }
+  $vars->forceMenuRebuild();
 
   drupal_set_message(t('The settings have been reset.'), 'status');
 }
@@ -336,35 +325,14 @@ function _opensearch_ui_admin_settings_fields($os) {
     '#cols' => 30,
   );
 
-  $form['token_help'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Replacement patterns'),
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-    '#description' => t('Prefer raw-text replacements for text to avoid problems with HTML entities.'),
-  );
-
-  $tokens = array('global');
-  if (module_exists('opensearch_token')) {
-    $tokens[] = 'search';
+  if (module_exists('token')) {
+    $form['token_help'] = array(
+      '#theme' => 'token_tree',
+      '#token_types' => array('global', 'search'),
+    );
   }
 
-  $form['token_help']['help'] = array(
-    '#value' => theme('token_help', $tokens),
-  );
-
   return $form;
-}
-
-/**
- * Avoids the warning about tokens.module not being enabled is presented in the
- * settings page.
- */
-function opensearch_ui_dismiss_warning() {
-  $vars = new OpenSearchVars();
-  $vars['opensearch_dismiss_tokens_warning'] = FALSE;
-
-  drupal_goto('admin/settings/search/opensearch');
 }
 
 /**
@@ -375,7 +343,8 @@ function opensearch_ui_dismiss_warning() {
  *
  * @ingroup themeable
  */
-function theme_opensearch_ui_description_files($form) {
+function theme_opensearch_ui_description_files($variables) {
+  $form = $variables['form'];
   $header = array();
   $rows = array();
 
@@ -408,5 +377,5 @@ function theme_opensearch_ui_description_files($form) {
   unset($form['opensearch_enabled_feeds']['#title']);
   unset($form['opensearch_enabled_types']['#title']);
 
-  return theme('table', $header, $rows) . drupal_render($form);
+  return theme('table', $header, $rows) . drupal_render_children($form);
 }

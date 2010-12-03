@@ -11,7 +11,7 @@ class OpenSearch implements ArrayAccess {
   /**
    * The API version currently implemented by the class.
    */
-  const API_VERSION = '2.0';
+  const API_VERSION = '2.1';
 
   protected $settings = array();
   protected $type;
@@ -52,7 +52,7 @@ class OpenSearch implements ArrayAccess {
       drupal_add_feed($result_url, $result_title);
     }
   }
-  
+
   /**
    * Adds a OpenSearch link in the HTTP response header for the current page.
    */
@@ -350,11 +350,9 @@ class OpenSearch implements ArrayAccess {
       $this->settings = $settings;
     }
     else {
-      $row = db_fetch_object(
-        db_query_range(
-          "SELECT settings FROM {opensearch} WHERE type = '%s'", $this->type, 0, 1
-        )
-      );
+      $row = db_query_range(
+        "SELECT settings FROM {opensearch} WHERE type = :type", 0, 1, array(':type' => $this->type)
+      )->fetchField();
       if ($row) {
         $this->settings = empty($row->settings) ? array() : unserialize($row->settings);
       }
@@ -417,11 +415,9 @@ class OpenSearch implements ArrayAccess {
    * Saves the module settings.
    */
   function saveSettings() {
-    $result = db_fetch_object(
-      db_query("SELECT id, type, settings FROM {opensearch} WHERE type = '%s'",
-        $this->type
-      )
-    );
+    $result = db_query_range("SELECT id, type, settings FROM {opensearch} WHERE type = :type",
+        0, 1, array(':type' => $this->type)
+      )->fetchObject();
 
     if ($result === FALSE) {
       $row = new stdClass();
@@ -538,6 +534,22 @@ class OpenSearchVars extends Vars {
 }
 
 /**
+ * Implements hook_hook_info().
+ */
+function opensearch_hook_info() {
+  $hooks = array();
+
+  $hooks['token_info'] = array(
+    'group' => 'tokens',
+  );
+  $hooks['tokens'] = array(
+    'group' => 'tokens',
+  );
+
+  return $hooks;
+}
+
+/**
  * Implements hook_init().
  */
 function opensearch_init() {
@@ -575,12 +587,12 @@ function opensearch_init() {
  * Implements hook_menu().
  */
 function opensearch_menu() {
-  $search_content = array('search content');
+  $items = array();
 
   $items['opensearch/%opensearch_type'] = array(
     'page callback' => 'opensearch_description',
     'page arguments' => array(1),
-    'access arguments' => $search_content,
+    'access arguments' => array('search content'),
     'type' => MENU_CALLBACK,
     'file' => 'opensearch.pages.inc',
   );
@@ -588,7 +600,7 @@ function opensearch_menu() {
   $items['opensearch/%opensearch_type/%menu_tail'] = array(
     'page callback' => 'opensearch_view',
     'page arguments' => array(1),
-    'access arguments' => $search_content,
+    'access arguments' => array('search content'),
     'type' => MENU_CALLBACK,
     'file' => 'opensearch.pages.inc',
   );
@@ -602,7 +614,7 @@ function opensearch_menu() {
 function opensearch_theme() {
   return array(
     'opensearch_description' => array(
-      'arguments' => array('opensearch' => NULL),
+      'render element' => 'opensearch',
       'template' => 'opensearch-description',
     ),
   );
