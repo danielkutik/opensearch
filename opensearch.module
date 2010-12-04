@@ -657,8 +657,13 @@ function template_preprocess_opensearch_description(&$variables) {
   $languages = language_list('enabled');
   $variables['languages'] = $languages[1];
 
+  $bool = (
+    $os['image_type'] == 'theme' ||
+    $os['image_type'] == 'custom' &&
+    empty($os['image_custom'])
+  );
   if ($bool) {
-    init_theme();
+    drupal_theme_initialize();
     $image_path = theme_get_setting('favicon');
   }
   else {
