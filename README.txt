@@ -1,4 +1,3 @@
-# $Id$
 
 This module adds OpenSearch 1.1 support to Drupal.
 Search queries for all the modules that use hook_search() are available at

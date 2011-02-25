@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 class OpenSearchTokensTestCase extends DrupalWebTestCase {
   public static function getInfo() {

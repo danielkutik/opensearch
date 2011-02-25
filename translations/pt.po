@@ -1,5 +1,4 @@
 # translation to Português (Portugal)
-# $Id$
 # Portuguese translation of OpenSearch Feed Drupal module
 # Generated from files:
 #  opensearch.module,v 1.10 2008/04/27 20:15:23 hunmaat

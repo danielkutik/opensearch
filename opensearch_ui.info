@@ -1,4 +1,3 @@
-; $Id$
 name = OpenSearch feed UI
 description = User interface for the OpenSearch feed module.
 dependencies[] = opensearch

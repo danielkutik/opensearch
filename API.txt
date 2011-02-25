@@ -1,4 +1,3 @@
-# $Id$
 # API changes.
 # This file reports any changes made to the module API, and in which API
 # version they have been introduced.
