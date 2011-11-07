@@ -5,7 +5,6 @@
  * User interface for the OpenSearch feed module.
  */
 
-
 /**
  * Implements hook_menu().
  */

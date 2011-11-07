@@ -5,7 +5,6 @@
  * Allows Drupal search results to be returned in the OpenSearch RSS format.
  */
 
-
 class OpenSearch implements ArrayAccess {
   /**
    * The API version currently implemented by the class.
@@ -30,7 +29,7 @@ class OpenSearch implements ArrayAccess {
    */
   function addFeed() {
     $keywords = trim(search_get_keys());
-    $stored_feed_links = &Vars::staticValue('drupal_add_feed', array());
+    $stored_feed_links = &drupal_static('opensearch_add_feed', array());
 
     if ($keywords) {
       $rss_title = $this->checkPlain($this->settings['rss_title']);
@@ -280,8 +279,6 @@ class OpenSearch implements ArrayAccess {
    *   An instance of the class OpenSearch.
    */
   public static function getInstance($type = NULL, $settings = NULL) {
-    $vars = new OpenSearchVars();
-
     if (!isset($type)) {
       $bool = (
         (arg(0) == 'search' || arg(0) == 'opensearch') &&
@@ -315,7 +312,7 @@ class OpenSearch implements ArrayAccess {
       }
 
       // Check if this search type is enabled.
-      $enabled = $vars['opensearch_enabled_types'];
+      $enabled = variable_get('opensearch_enabled_types');
       $bool = (
         empty($enabled) ||
         (isset($enabled) && in_array($type, array_filter($enabled)))
@@ -357,16 +354,14 @@ class OpenSearch implements ArrayAccess {
     $this->settings += $this->defaultSettings();
 
     if ($this->type != '-default-') {
-      $vars = new OpenSearchVars();
-
-      $enabled = $vars['opensearch_enabled_types'];
+      $enabled = variable_get('opensearch_enabled_types');
       $bool = (
         empty($enabled) ||
         (isset($enabled) && in_array($this->type, array_filter($enabled)))
       );
       $this->settings['enabled'] = $bool;
 
-      $enabled = $vars['opensearch_enabled_feeds'];
+      $enabled = variable_get('opensearch_enabled_feeds');
       $bool = (
         empty($enabled) ||
         (isset($enabled) && in_array($this->type, array_filter($enabled)))
@@ -507,29 +502,6 @@ class OpenSearch implements ArrayAccess {
 }
 
 /**
- * Allows to access the Drupal variables used by the module.
- */
-class OpenSearchVars extends Vars {
-  /**
-   * Constructs a OpenSearchVars object.
-   */
-  function __construct() {
-   parent::__construct('opensearch');
-  }
-
-  /**
-   * Implements Vars::getDefaults().
-   */
-  protected function getDefaults() {
-    return array(
-      'opensearch_enabled_types' => array('value' => NULL),
-      'opensearch_enabled_feeds' => array('value' => NULL),
-      'opensearch_dismiss_tokens_warning' => array('value' => FALSE),
-    );
-  }
-}
-
-/**
  * Implements hook_hook_info().
  */
 function opensearch_hook_info() {
@@ -550,12 +522,11 @@ function opensearch_hook_info() {
  */
 function opensearch_init() {
   $headers = drupal_get_headers();
-  $vars = new OpenSearchVars();
 
   // Verify the site is not offline, or Drupal is not returning an error page.
   $bool = (
     (
-      $vars['site_offline'] &&
+      variable_get('site_offline', FALSE) &&
       !user_access('administer site configuration')
     ) ||
     preg_match('@HTTP/1\.[01]\x20+403[^a-zA-Z0-9]@', $headers) ||

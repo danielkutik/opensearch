@@ -1,6 +1,5 @@
 <?php
 
-
 /**
  * @file
  * Admin page callbacks for the Opensearch feed module.
@@ -15,10 +14,8 @@
  * @ingroup forms
  */
 function opensearch_ui_admin_settings() {
-  $vars = new OpenSearchVars();
-
-  $enabled_feeds = $vars['opensearch_enabled_feeds'];
-  $enabled_types = $vars['opensearch_enabled_types'];
+  $enabled_feeds = variable_get('opensearch_enabled_feeds');
+  $enabled_types = variable_get('opensearch_enabled_types');
   $form = array(
     '#opensearch_type' => '-default-',
     '#submit' => array('opensearch_ui_admin_settings_submit'),
@@ -115,18 +112,14 @@ function opensearch_ui_admin_settings() {
  * @see opensearch_ui_admin_settings()
  */
 function opensearch_ui_admin_settings_reset($form, &$form_state) {
-  $vars = new OpenSearchVars();
-
   db_delete('opensearch')
     ->condition('type', $form['#opensearch_type'])
     ->execute();
 
   if ($form['#opensearch_type'] == '-default-') {
-    unset($vars['opensearch_enabled_feeds']);
-    unset($vars['opensearch_enabled_types']);
+    variable_del('opensearch_enabled_feeds');
+    variable_del('opensearch_enabled_types');
   }
-
-  $vars->forceMenuRebuild();
 
   drupal_set_message(t('The settings have been reset.'), 'status');
 }
@@ -138,11 +131,10 @@ function opensearch_ui_admin_settings_reset($form, &$form_state) {
  */
 function opensearch_ui_admin_settings_submit($form, &$form_state) {
   $type = $form['#opensearch_type'];
-  $vars = new OpenSearchVars();
 
   if ($type == '-default-') {
-    $vars['opensearch_enabled_feeds'] = $form_state['values']['opensearch_enabled_feeds'];
-    $vars['opensearch_enabled_types'] = $form_state['values']['opensearch_enabled_types'];
+    variable_set('opensearch_enabled_feeds', $form_state['values']['opensearch_enabled_feeds']);
+    variable_set('opensearch_enabled_types', $form_state['values']['opensearch_enabled_types']);
 
     unset($form_state['values']['opensearch_enabled_feeds']);
     unset($form_state['values']['opensearch_enabled_types']);

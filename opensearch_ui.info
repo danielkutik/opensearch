@@ -2,5 +2,3 @@ name = OpenSearch feed UI
 description = User interface for the OpenSearch feed module.
 dependencies[] = opensearch
 core = 7.x
-files[] = opensearch_ui.module
-files[] = opensearch_ui.admin.inc

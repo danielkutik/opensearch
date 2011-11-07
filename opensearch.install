@@ -40,17 +40,16 @@ function opensearch_schema() {
 }
 
 /**
- * Implements hook_install().
- */
-function opensearch_install() {
-  $vars = new OpenSearchVars();
-  $vars->saveDefaults();
-}
-
-/**
  * Implements hook_uninstall().
  */
 function opensearch_uninstall() {
-  $vars = new OpenSearchVars();
-  $vars->removeDefaults();
+  $variables = array(
+    'opensearch_enabled_types',
+    'opensearch_enabled_feeds',
+    'opensearch_dismiss_tokens_warning',
+  );
+  
+  foreach ($variables as $variable) {
+    variable_del($variable);
+  }
 }
