@@ -28,7 +28,7 @@
  * @param $args
  *   The fourth argument passed to @code format_rss_item() @endcode.
  */
- function hook_opensearch_rss_item_alter(&$result, $&$args) {
+ function hook_opensearch_rss_item_alter(&$result, &$args) {
  }
 
 /**

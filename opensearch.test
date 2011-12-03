@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @file
+ * Tests for the OpenSearch Feed module.
+ */
+
 class OpenSearchTokensTestCase extends DrupalWebTestCase {
   public static function getInfo() {
     return array(
@@ -73,7 +78,7 @@ class OpenSearchFeedValidationTestCase extends DrupalWebTestCase {
     while ($count--) {
       $word = '';
       while (strlen($word) < $min_length) {
-        switch(mt_rand(0, 2)) {
+        switch (mt_rand(0, 2)) {
           case 2:
             $word .= $consonants[mt_rand(0, $num_consonants)];
           case 1:
