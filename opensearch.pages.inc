@@ -23,9 +23,9 @@ function opensearch_description($os) {
 
 /**
  * Presents an OpenSearch results page.
+ *
  * @param $os
  *   An instance of the class OpenSearch.
- *
  * @return
  *   The XML content for the Opensearch feed, or the error page 404.
  */
