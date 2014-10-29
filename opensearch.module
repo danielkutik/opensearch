@@ -528,9 +528,10 @@ function opensearch_init() {
     (
       variable_get('site_offline', FALSE) &&
       !user_access('administer site configuration')
-    ) ||
-    preg_match('@HTTP/1\.[01]\x20+403[^a-zA-Z0-9]@', $headers) ||
-    preg_match('@HTTP/1\.[01]\x20+404[^a-zA-Z0-9]@', $headers)
+    )
+    //||
+    //preg_match('@HTTP/1\.[01]\x20+403[^a-zA-Z0-9]@', $headers) ||
+    //preg_match('@HTTP/1\.[01]\x20+404[^a-zA-Z0-9]@', $headers)
   );
   if (!$bool) {
     if ($os = OpenSearch::getInstance()) {
