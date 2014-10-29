@@ -77,7 +77,7 @@ function opensearch_tokens($type, $tokens, array $data = array(), array $options
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'keywords':
-          $keywords = trim(search_get_keys());
+          $keywords = trim(opensearch_search_get_keys());
           $replacements[$original] = $sanitize ? check_plain($keywords) : trim($keywords);
           break;
 

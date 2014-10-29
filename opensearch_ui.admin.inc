@@ -184,7 +184,7 @@ function opensearch_ui_admin_type_settings($form_state, $os) {
  * @param $os
  *   An object of the class OpenSearch.
  *
- * @return
+ * @return array
  *   The array of form API fields.
  */
 function _opensearch_ui_admin_settings_fields($os) {
@@ -329,8 +329,10 @@ function _opensearch_ui_admin_settings_fields($os) {
 /**
  * Renders the list of the enabled OpenSearch feeds.
  *
- * @param $form
+ * @param $variables
  *   The form containing the fields to render.
+ *
+ * @return null
  *
  * @ingroup themeable
  */

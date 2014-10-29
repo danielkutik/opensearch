@@ -17,7 +17,7 @@ class OpenSearch implements ArrayAccess {
   /**
    * Constructs an OpenSearch object.
    *
-   * @param $type
+   * @param string $type
    *  The name of the search module.
    */
    protected function __construct($type) {
@@ -28,7 +28,7 @@ class OpenSearch implements ArrayAccess {
    * Adds the feed link.
    */
   function addFeed() {
-    $keywords = trim(search_get_keys());
+    $keywords = trim(opensearch_search_get_keys());
     $stored_feed_links = &drupal_static('opensearch_add_feed', array());
 
     if ($keywords) {
@@ -46,7 +46,7 @@ class OpenSearch implements ArrayAccess {
       }
 
       $rss_url = $this->url(
-        'opensearch', '/' . drupal_urlencode($keywords),
+        'opensearch', '/' . drupal_encode_path($keywords),
         array('query' => $query)
       );
 
@@ -79,13 +79,13 @@ class OpenSearch implements ArrayAccess {
    * Verifies the current API version is included between two values passes as
    * arguments.
    *
-   * @param $minimum
+   * @param string $minimum
    *   The minimum API version required.
-   * @param $maximum
+   * @param string $maximum
    *   The maximum version required. This argument is optional; the current API
    *   will be checked against this value only if it is passed to the function.
    *
-   * @return
+   * @return boolean
    *   TRUE, if the current API version is included between the passed values.
    */
   public static function api($minimum, $maximum = NULL) {
@@ -103,13 +103,13 @@ class OpenSearch implements ArrayAccess {
   /**
    * Encode special characters in a OpenSearch descriptor string.
    *
-   * @param $string
+   * @param string $string
    *   The string to be filtered.
-   * @param $length
+   * @param integer $length
    *   The length of the returned string; if the parameter is not used,
    *   or it is equal to 0, then the string will not be truncated.
    *
-   * @return
+   * @return string
    *  The filtered string.
    */
   function checkPlain($string, $length = 0) {
@@ -132,7 +132,7 @@ class OpenSearch implements ArrayAccess {
   /**
    * Returns the default settings values.
    *
-   * @return
+   * @return array
    *   An array of default values.
    *
    * @see OpenSearch::loadSettings()
@@ -162,12 +162,12 @@ class OpenSearch implements ArrayAccess {
   /**
    * Renders an OpenSearch feed.
    *
-   * @param $keywords
+   * @param string $keywords
    *   The keywords used for the search.
-   * @param $results
+   * @param array $results
    *  An array containing the search results.
    *
-   * @return
+   * @return string
    *   The XML content for the Opensearch feed.
    */
   function feed($keywords, $results = NULL) {
@@ -229,7 +229,7 @@ class OpenSearch implements ArrayAccess {
         'key' => 'atom:link',
         'attributes' => array(
           'rel' => 'self',
-          'href' => $this->url('opensearch', '/' . drupal_urlencode($keywords), array('query' => $query)),
+          'href' => $this->url('opensearch', '/' . drupal_encode_path($keywords), array('query' => $query)),
           'type' => 'application/rss+xml',
         ),
       ),
@@ -264,18 +264,20 @@ class OpenSearch implements ArrayAccess {
     $output[] = format_rss_channel($title, $base_url, $description, $items, NULL, $args);
     $output[] = '</rss>';
 
-    drupal_set_header('Content-Type: application/rss+xml; charset=utf-8');
+    drupal_add_http_header('Content-Type', 'application/rss+xml; charset=utf-8');
     print implode("\n", $output);
   }
 
   /**
    * Returns an instance of the class OpenSearch.
    *
-   * @param $type
+   * @param string $type
    *   The search module identifier; if the argument is not passed, the search
    *   identifier will be detected from the current URL.
    *
-   * @return
+   * @param array $settings
+   *
+   * @return OpenSearch
    *   An instance of the class OpenSearch.
    */
   public static function getInstance($type = NULL, $settings = NULL) {
@@ -444,7 +446,7 @@ class OpenSearch implements ArrayAccess {
    *   The maximum number of items accepted in the returned array; the default
    *   value is -1, which means no limit.
    *
-   * @return
+   * @return string
    *   A string containing only unique items.
    */
   public static function uniqueValues($text, $separator = ' ', $max_items = -1) {
@@ -474,12 +476,13 @@ class OpenSearch implements ArrayAccess {
   /**
    * Generates an absolute OpenSearch URL.
    *
-   * @param $prefix
+   * @param string $prefix
    *   The prefix to add in the URL.
-   * @param $suffix
+   * @param string $suffix
    *   The suffix to add in the URL.
+   * @param array $options
    *
-   * @return
+   * @return string
    *   A string containing the absolute URL.
    */
   function url($prefix, $suffix = '', array $options = array()) {
@@ -521,7 +524,7 @@ function opensearch_hook_info() {
  * Implements hook_init().
  */
 function opensearch_init() {
-  $headers = drupal_get_http_header();
+  //$headers = drupal_get_http_header();
 
   // Verify the site is not offline, or Drupal is not returning an error page.
   $bool = (
@@ -593,6 +596,23 @@ function opensearch_theme() {
  */
 function opensearch_type_load($type) {
   return OpenSearch::getInstance($type);
+}
+
+/**
+ * Helper function for grabbing search keys. Function is missing in D7.
+ *
+ * http://api.drupal.org/api/function/search_get_keys/6
+ */
+function opensearch_search_get_keys() {
+  static $return;
+  if (!isset($return)) {
+    // Extract keys as remainder of path
+    // Note: support old GET format of searches for existing links.
+    $path = explode('/', $_GET['q'], 3);
+    $keys = empty($_REQUEST['keys']) ? '' : $_REQUEST['keys'];
+    $return = count($path) == 3 ? $path[2] : $keys;
+  }
+  return $return;
 }
 
 /**
