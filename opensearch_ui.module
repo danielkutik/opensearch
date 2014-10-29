@@ -18,7 +18,7 @@ function opensearch_ui_menu() {
     'page arguments' => array('opensearch_ui_admin_settings'),
     'access arguments' => array('administer search'),
     'weight' => -11,
-    'file' => 'opensearch.admin.inc',
+    'file' => 'opensearch_ui.admin.inc',
   );
   $items['admin/config/opensearch/settings/%opensearch_type'] = array(
     'title' => 'OpenSearch settings',
