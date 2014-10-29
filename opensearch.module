@@ -521,7 +521,7 @@ function opensearch_hook_info() {
  * Implements hook_init().
  */
 function opensearch_init() {
-  $headers = drupal_get_headers();
+  $headers = drupal_get_http_header();
 
   // Verify the site is not offline, or Drupal is not returning an error page.
   $bool = (
